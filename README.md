@@ -24,6 +24,35 @@
 </h3>
 <br/><br/>
 
+## 🍴 About this fork
+
+This is a personal fork of [YASB](https://github.com/amnweb/yasb) with a custom widget added on top of upstream.
+
+### 🤖 `claude_code` — Claude Code activity widget
+
+Shows the live status of your [Claude Code](https://claude.com/claude-code) sessions right in the bar — **idle**, **thinking**, the **name of the running tool**, or a **"waiting"** state when Claude needs permission — plus an optional elapsed‑time counter. It's the Windows/YASB counterpart to the macOS [claude-status-bar](https://github.com/m1ckc3s/claude-status-bar) menu‑bar app.
+
+It reads `~/.claude/statusbar/state.json` (written by Claude Code hooks) and updates instantly via a filesystem watcher — no polling of Claude itself, no network. Full options and setup: **[docs/widgets/claude_code.md](docs/widgets/claude_code.md)**.
+
+> Pairs nicely with the built-in `claude_usage` widget (5‑hour / 7‑day usage %).
+
+**Running this fork** — the widget isn't in the packaged releases, so run from source:
+
+```bash
+python -m venv .venv
+.venv\Scripts\python -m pip install -e .
+.venv\Scripts\pythonw src\main.py
+```
+
+**Branches:**
+- **`main`** — YASB + the `claude_code` widget (run this)
+- **`feat/claude-code-widget`** — just the widget, isolated for a clean PR to upstream
+- **`my-config`** — an example `~/.config/yasb` (`config.yaml` + `styles.css`) wiring up both Claude widgets
+
+Everything below is the original upstream YASB README.
+
+---
+
 ## 📋 Installation
 
 For detailed installation instructions and system requirements, visit the [installation docs](https://github.com/amnweb/yasb/wiki/Installation). 
