@@ -96,9 +96,7 @@ Then add `"claude_code"` to a bar's widget list (e.g. under `right:`).
 ## Setup
 
 The widget only reads the state file — the numbers come from Claude Code hooks
-that write it. Any hook set that produces the contract above works. The
-reference implementation lives in the companion
-`Claude Status Bar Windows/hooks` project (a Claude Code plugin whose
-`lifecycle.js` maps `SessionStart / UserPromptSubmit / PreToolUse / PostToolUse /
-Notification / Stop` onto the state file). Once those hooks are installed and a
-Claude Code session runs, the widget updates live.
+that write it. A ready-to-install hook script and setup guide are bundled in
+this repo at [`claude-hooks/`](../../claude-hooks/README.md): add the provided
+block to your `~/.claude/settings.json`, start a Claude Code session, and the
+widget updates live. Any hook set that produces the contract above also works.
