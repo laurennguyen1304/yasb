@@ -1,0 +1,7 @@
+{
+  "name": "claude-status-bar-windows",
+  "version": "0.1.0",
+  "description": "System tray status indicator for Claude Code on Windows: animated spark, elapsed timer, and open/close lifecycle.",
+  "license": "MIT",
+  "hooks": "./hooks/hooks.json"
+}
