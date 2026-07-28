@@ -26,6 +26,7 @@ internal sealed class TrayApp : ApplicationContext
     private Phase _lastRenderedPhase = (Phase)(-1);
     private int _animFrame;
     private long _activeStartedAt;    // remembered while a turn is active
+    private bool _sawSession;         // true once any Claude session has appeared
 
     // Menu items we toggle checkmarks on.
     private readonly ToolStripMenuItem _miStatus;
@@ -91,8 +92,14 @@ internal sealed class TrayApp : ApplicationContext
 
     private void Poll()
     {
-        // Self-quit when there are no active sessions left.
-        if (CountSessions() == 0)
+        // Self-quit once Claude sessions have come and gone. If the app was
+        // launched standalone (no session ever appeared, e.g. someone just
+        // wants the calculator), it stays running until quit from the menu.
+        if (CountSessions() > 0)
+        {
+            _sawSession = true;
+        }
+        else if (_sawSession)
         {
             QuitApp();
             return;
