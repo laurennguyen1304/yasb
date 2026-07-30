@@ -1,0 +1,580 @@
+/* 
+This is default and very simple styles file for Yasb. 
+For more information about configuration options, please visit the Wiki https://github.com/amnweb/yasb/wiki
+*/
+:root {
+    --mauve: #cba6f7;
+    --red: #f38ba8;
+    --yellow: #f9e2af;
+    --blue: #89b4fa;
+    --lavender: #b4befe;
+    --text: #cdd6f4;
+    --subtext1: #bac2de;
+    --subtext0: #a6adc8;
+    --overlay2: #9399b2;
+    --overlay1: #7f849c;
+    --overlay0: #6c7086;
+    --surface2: #585b70;
+    --surface1: #45475a;
+    --surface0: #282936;
+    --base: #1e1e2e;
+    --crust: rgba(32, 32, 43, 0.92);
+}
+/* Global styles for ToolTip */
+QToolTip {
+    padding: 6px;
+    color: #cdd6f4;
+    font-size: 12px;
+    background-color: #1e1e2e;
+    border: 0px solid #313244;
+    border-radius: 6px;
+}
+* {
+    font-size: 12px;
+    color: var(--text);
+    font-weight: 500;
+    /* Text renders in Google Sans; Nerd Font glyphs (icons) fall back to JetBrainsMono NFP per-glyph */
+    font-family: "Google Sans", "JetBrainsMono NFP";
+    margin: 0;
+    padding: 0;
+}
+.yasb-bar {
+    padding: 0;
+    margin: 0;
+    background-color: var(--crust);
+    border-radius: 8px;
+    border: 1px solid #313244;
+}
+/* Global context menu style */
+.context-menu,
+.context-menu .menu-checkbox {
+    background-color: #202020;
+    border: none;
+    padding: 4px 0px;
+    font-family: 'Segoe UI';
+    font-size: 12px;
+    color: #FFFFFF;
+}
+.context-menu::right-arrow {
+    width: 8px;
+    height: 8px;
+    padding-right: 24px;
+}
+.context-menu::item,
+.context-menu .menu-checkbox {
+    background-color: transparent;
+    padding: 6px 12px;
+    margin: 2px 6px;
+    border-radius: 6px;
+    min-width: 100px;
+}
+
+.context-menu::item:selected,
+.context-menu .menu-checkbox:hover {
+    background-color: #3a3a3a;
+    color: #FFFFFF;
+}
+
+.context-menu::separator {
+    height: 1px;
+    background-color: #404040;
+    margin: 4px 8px;
+}
+.context-menu::item:disabled {
+    color: #666666;
+    background-color: transparent;
+}
+
+.context-menu .menu-checkbox .checkbox {
+    border: none;
+    padding: 8px 16px;
+    font-size: 12px;
+    margin: 0;
+    color: #FFFFFF;
+    font-family: 'Segoe UI'
+}
+.context-menu .submenu::item:disabled {
+    margin: 0;
+    padding-left: 16px;
+}
+.context-menu .menu-checkbox .checkbox:unchecked {
+    color: #999
+}
+.context-menu .menu-checkbox .checkbox::indicator {
+    width: 12px;
+    height: 12px;
+    margin-left: 0px;
+    margin-right: 8px;
+}
+.context-menu .menu-checkbox .checkbox::indicator:unchecked {
+    background: #444444;
+    border-radius: 2px;
+}
+.context-menu .menu-checkbox .checkbox::indicator:checked {
+    background: #007acc;
+    border-radius: 2px;
+}
+.context-menu .menu-checkbox .checkbox:focus {
+    outline: none;
+}
+
+.widget {
+    padding: 0 12px;
+    margin: 0;
+}
+.icon {
+    font-size: 16px;
+}
+.widget .label {
+    padding: 0px 2px;
+}
+.komorebi-active-layout {
+    padding: 0 4px 0 0;
+}
+.komorebi-active-layout .label {
+    font-weight: 600;
+    padding: 2px 0 0 0;
+}
+.apps-widget .widget-container,
+.komorebi-workspaces .widget-container,
+.komorebi-active-layout .widget-container {
+    background-color: var(--surface1);
+    margin: 3px 0 3px 0;
+    border-radius: 12px;
+    border: 1px solid var(--surface0);
+}
+.komorebi-workspaces .widget-container {
+    border-top-left-radius: 6px;
+    border-bottom-left-radius: 6px;
+    margin-left: 4px;
+}
+.komorebi-workspaces {
+    border-top-right-radius: 14px;
+    border-bottom-right-radius: 14px;
+    padding: 0 4px 0 0;
+}
+.komorebi-workspaces .offline-status {
+    color: var(--surface2);
+    font-size: 12px;
+    padding: 0 0 0 4px;
+    font-weight: 600;
+}
+.komorebi-workspaces .ws-btn {
+    border: none;
+    background-color: transparent;
+    margin: 0;
+    font-size: 12px;
+    color: var(--overlay1);
+    height: 28px;
+    width: 18px;
+}
+.komorebi-workspaces .ws-btn:hover {
+    color: var(--subtext1);
+}
+.komorebi-workspaces .ws-btn.populated {
+    color: transparent;
+    width: 10px;
+    height: 10px;
+    background-color: var(--lavender);
+    border-radius: 5px;
+    margin: 0 4px;
+    font-size: 1px;
+}
+.komorebi-workspaces .ws-btn.active {
+    color: transparent;
+    background-color: var(--blue);
+    width: 36px;
+    max-width: 36px;
+    height: 10px;
+    margin: 0 4px;
+    border-radius: 5px;
+}
+.apps-widget {
+    padding: 0 4px 0 2px;
+}
+.apps-widget .label {
+    font-size: 14px;
+    padding: 0 2px;
+    color: var(--subtext0);
+}
+.apps-widget .label:hover {
+    color: var(--text);
+}
+
+.power-menu-widget .label {
+    color: #f38ba8;
+    font-size: 13px;
+}
+.power-menu-popup {
+    background-color: transparent
+}
+.power-menu-popup .button {
+    padding: 0;
+    width: 180px;
+    height: 230px;
+    border-radius: 8px;
+    background-color: var(--crust);
+    color: var(--text);
+    border-left: 4px solid rgba(58, 59, 83, 0);
+    border-right: 4px solid rgba(58, 59, 83, 0);
+    border-top: 4px solid rgba(58, 59, 83, 0);
+    border-bottom: 4px solid rgba(58, 59, 83, 0);
+    margin: 0px;
+}
+.power-menu-popup .button.hover {
+    background-color: var(--base);
+    border-left: 4px solid var(--base);
+    border-right: 4px solid var(--base);
+    border-top: 4px solid var(--base);
+    border-bottom: 4px solid var(--base);
+}
+
+.power-menu-popup .button .label {
+    margin-bottom: 8px;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--overlay2)
+}
+.power-menu-popup .button .icon {
+    font-size: 64px;
+    padding-top: 32px;
+    color: var(--surface2)
+}
+
+.power-menu-popup .button.cancel .icon {
+    padding: 0;
+    margin: 0;
+}
+.power-menu-popup .button.cancel .label {
+    color: var(--red);
+    margin: 0;
+}
+.power-menu-popup .button.cancel {
+    height: 32px;
+    border-radius: 4px;
+}
+.uptime {
+    font-size: 14px;
+    margin-bottom: 10px;
+    color: var(--surface2);
+    font-weight: 600;
+}
+.microphone-widget {
+    padding: 0 6px 0 6px;
+}
+.microphone-widget .icon {
+    font-size: 18px;
+}
+.microphone-widget .icon {
+    color: var(--mauve);
+}
+.volume-widget .icon {
+    font-size: 17px;
+    color: var(--blue);
+    margin: 0px 2px 0 0;
+}
+.weather-widget,
+.volume-widget {
+    padding: 0 6px;
+}
+.weather-widget .icon {
+    font-size: 18px;
+    margin: 0 2px 1px 0;
+    color: var(--yellow);
+}
+.media-widget {
+    padding: 0;
+    margin: 0;
+    border-radius: 0;
+}
+.media-widget .label {
+    color: #bac2db;
+    padding: 0px;
+    padding-right: 4px;
+    font-size: 12px;
+}
+.media-widget .btn {
+    color: #7a7f8b;
+    padding: 0 4px;
+    margin: 0;
+    font-family: "JetBrainsMono NFP";
+    font-weight: 400;
+    font-size: 20px;
+}
+.media-widget .btn:hover {
+    color: #babfd3;
+}
+.media-widget .btn.play {
+    font-size: 24px;
+    color: #989caa;
+}
+.media-widget .btn.disabled:hover,
+.media-widget .btn.disabled {
+    color: #4e525c;
+    background-color: rgba(0, 0, 0, 0);
+    font-size: 20px;
+}
+.home-widget {
+    padding: 0 4px 0 12px;
+}
+.home-widget .icon {
+    color: var(--lavender);
+}
+.home-widget .icon:hover {
+    color: var(--text);
+}
+.home-menu {
+    background-color: var(--crust);
+    border-radius: 8px;
+}
+.home-menu .menu-item {
+    padding: 8px 48px 9px 16px;
+    font-size: 12px;
+    font-family: 'Segoe UI';
+    color: var(--text);
+    font-weight: 600;
+}
+.home-menu .menu-item:hover {
+    background-color: rgba(128, 130, 158, 0.15);
+    color: #fff;
+}
+.home-menu .separator {
+    max-height: 1px;
+    background-color: rgba(128, 130, 158, 0.3);
+}
+.notification-widget {
+    padding: 0 0px 0 4px;
+}
+.notification-widget .icon {
+    font-size: 14px;
+}
+.notification-widget .icon.new-notification {
+    color: var(--blue);
+}
+/* Claude Code activity widget — vivid, well-separated hues per state,
+   applied to both the dot and the label text for at-a-glance clarity. */
+.claude-code {
+    padding: 0 8px;
+}
+.claude-code .icon {
+    font-size: 13px;
+    padding-right: 6px;
+}
+.claude-code .icon.idle,
+.claude-code .label.idle       { color: #808699; }          /* muted grey  */
+.claude-code .icon.thinking,
+.claude-code .label.thinking   { color: #b06bff; }          /* vivid violet */
+.claude-code .icon.tool,
+.claude-code .label.tool       { color: #2fe07a; }          /* vivid green  */
+.claude-code .icon.permission,
+.claude-code .label.permission { color: #ffb01f; }          /* vivid amber  */
+
+/* Session-list popup (right-click / show_sessions) */
+.claude-code-menu {
+    background-color: var(--crust);
+    border: 1px solid #313244;
+    border-radius: 8px;
+    min-width: 260px;
+}
+.claude-code-menu .header {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    padding: 12px 14px 8px 14px;
+}
+.claude-code-menu .empty {
+    font-size: 12px;
+    color: var(--subtext0);
+    padding: 4px 14px 14px 14px;
+}
+.claude-code-menu .session-row {
+    padding: 6px 14px;
+}
+.claude-code-menu .row-icon {
+    font-size: 12px;
+    min-width: 16px;
+    max-width: 16px;
+}
+.claude-code-menu .row-icon.idle       { color: #808699; }
+.claude-code-menu .row-icon.thinking   { color: #b06bff; }
+.claude-code-menu .row-icon.tool       { color: #2fe07a; }
+.claude-code-menu .row-icon.permission { color: #ffb01f; }
+.claude-code-menu .row-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+}
+.claude-code-menu .row-status {
+    font-size: 11px;
+}
+.claude-code-menu .row-status.idle       { color: #808699; }
+.claude-code-menu .row-status.thinking   { color: #b06bff; }
+.claude-code-menu .row-status.tool       { color: #2fe07a; }
+.claude-code-menu .row-status.permission { color: #ffb01f; }
+
+/* Claude usage widget (5h / 7d utilization) */
+.claude-usage {
+    padding: 0 8px;
+}
+.claude-usage .label {
+    color: var(--subtext1);
+}
+.claude-usage-menu {
+    background-color: var(--crust);
+    border: 1px solid #313244;
+    border-radius: 8px;
+    min-width: 240px;
+}
+.claude-usage-menu .header {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    padding: 12px 14px 6px 14px;
+}
+.claude-usage-menu .section {
+    padding: 6px 14px 12px 14px;
+}
+.claude-usage-menu .title {
+    font-size: 12px;
+    color: var(--subtext0);
+    padding-bottom: 6px;
+}
+.claude-usage-menu .progress {
+    min-height: 8px;
+    max-height: 8px;
+    border-radius: 4px;
+    background-color: var(--surface0);
+}
+.claude-usage-menu .progress .fill {
+    border-radius: 4px;
+    background-color: var(--blue);
+}
+.claude-usage-menu .progress.high .fill   { background-color: #f0546f; }
+.claude-usage-menu .progress.medium .fill { background-color: #ffb01f; }
+.claude-usage-menu .progress.low .fill    { background-color: #2fe07a; }
+.claude-usage-menu .footer {
+    padding-top: 6px;
+}
+.claude-usage-menu .reset {
+    font-size: 11px;
+    color: var(--subtext0);
+}
+.claude-usage-menu .percent {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text);
+}
+.claude-usage-menu .percent.high   { color: #f0546f; }
+.claude-usage-menu .percent.medium { color: #ffb01f; }
+.claude-usage-menu .percent.low    { color: #2fe07a; }
+.claude-usage-menu .date {
+    font-size: 10px;
+    color: var(--overlay0);
+    padding-top: 2px;
+}
+
+/* ============================================================
+   Quick Launch — "Search Widget" (imported from Claude Design)
+   Glassmorphism: frosted translucent-white pill, full radius,
+   soft drop shadow, gray magnifier, Inter; matching frosted
+   result panel. Frosting comes from the popup's `blur: true`
+   (Windows acrylic) behind the translucent backgrounds.
+   ============================================================ */
+.quick-launch-popup {
+    background-color: transparent;
+}
+.quick-launch-popup .container {
+    background-color: transparent;
+    border: none;
+    padding: 0;
+}
+
+/* The frosted pill  (design: rgba white .75, radius 999, soft shadow) */
+.quick-launch-popup .search {
+    background-color: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 8px;
+    padding: 14px 20px;
+    min-height: 30px;
+    box-shadow: 0 20px 50px rgba(20, 30, 60, 0.18);
+}
+
+/* Magnifier on the left (design stroke #6b7280) */
+.quick-launch-popup .search-icon {
+    color: #6b7280;
+    font-family: "JetBrainsMono NFP";
+    font-size: 18px;
+    padding-left: 2px;
+    padding-right: 12px;
+}
+
+/* Text field — Inter 18/500 #1f2430 (falls back to Google Sans) */
+.quick-launch-popup .search-input {
+    background-color: transparent;
+    border: none;
+    color: #1f2430;
+    font-family: "Inter", "Google Sans", "Segoe UI";
+    font-size: 18px;
+    font-weight: 500;
+    selection-background-color: #cdd9f0;
+    selection-color: #1f2430;
+}
+
+/* Subtle submit hint on the right */
+.quick-launch-popup .search-submit-icon {
+    color: #9aa1af;
+    font-family: "JetBrainsMono NFP";
+    font-size: 14px;
+    padding-left: 8px;
+}
+
+/* Active-provider chip */
+.quick-launch-popup .prefix {
+    color: #4b5563;
+    background-color: rgba(107, 114, 128, 0.12);
+    border-radius: 8px;
+    padding: 3px 10px;
+    margin-right: 10px;
+    font-size: 13px;
+    font-family: "Inter", "Google Sans";
+}
+
+/* Frosted result panel — separate rounded card below the pill */
+.quick-launch-popup .results {
+    background-color: rgba(255, 255, 255, 0.93);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 8px;
+    margin-top: 10px;
+    padding: 8px;
+    box-shadow: 0 20px 50px rgba(20, 30, 60, 0.16);
+}
+.quick-launch-popup .results-list-view {
+    background-color: transparent;
+    border: none;
+    color: #1f2430;                       /* result title ink */
+    font-family: "Inter", "Google Sans", "Segoe UI";
+    selection-background-color: rgba(107, 114, 128, 0.12);
+    selection-color: #1f2430;
+}
+/* Gap + breathing room between result rows (fixes stuck/overlapping items) */
+.quick-launch-popup .results-list-view::item {
+    padding: 9px 12px;
+    border-radius: 8px;
+    margin: 2px 0;
+}
+.quick-launch-popup .description {
+    color: #9aa1af;                       /* result subtitle */
+    font-family: "Inter", "Google Sans";
+}
+.quick-launch-popup .separator {
+    color: #c3c8d0;
+}
+.quick-launch-popup .results-empty-text {
+    color: #9aa1af;
+    font-family: "Inter", "Google Sans";
+    font-size: 14px;
+}
+.quick-launch-popup .results-empty-icon {
+    color: #c3c8d0;
+    font-family: "JetBrainsMono NFP";
+}

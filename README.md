@@ -26,28 +26,54 @@
 
 ## 🍴 About this fork
 
-This is a personal fork of [YASB](https://github.com/amnweb/yasb) with a custom widget added on top of upstream.
+A personal, self-contained fork of [YASB](https://github.com/amnweb/yasb) that runs on
+**Python 3.12** and ships a ready-to-use setup: the Claude widgets, a glassmorphism
+quick-launch **search bar with an inline calculator**, a global hotkey, and matching
+styles — all wired up so a fresh install needs no manual tweaking.
 
-### 🤖 `claude_code` — Claude Code activity widget
+### One-command setup (fresh install)
 
-Shows the live status of your [Claude Code](https://claude.com/claude-code) sessions right in the bar — **idle**, **thinking**, the **name of the running tool**, or a **"waiting"** state when Claude needs permission — plus an optional elapsed‑time counter. It's the Windows/YASB counterpart to the macOS [claude-status-bar](https://github.com/m1ckc3s/claude-status-bar) menu‑bar app.
+```powershell
+git clone https://github.com/laurennguyen1304/yasb.git
+cd yasb
+powershell -ExecutionPolicy Bypass -File .\setup.ps1
+.\.venv\Scripts\pythonw.exe src\main.py
+```
 
-It reads `~/.claude/statusbar/state.json` (written by Claude Code hooks) and updates instantly via a filesystem watcher — no polling of Claude itself, no network. Full options and setup: **[docs/widgets/claude_code.md](docs/widgets/claude_code.md)**.
+`setup.ps1` creates the venv, installs YASB on Python 3.12, patches the one
+3.14-only dependency, and deploys the bundled config to `~/.config/yasb`
+(backing up anything already there). Pass `-NoConfig` to keep your own config,
+or `-Run` to launch immediately.
 
-> Pairs nicely with the built-in `claude_usage` widget (5‑hour / 7‑day usage %).
+### What's included
 
-**Running this fork** — the widget isn't in the packaged releases, so run from source:
+- 🤖 **`claude_code`** — live [Claude Code](https://claude.com/claude-code) status in the bar
+  (idle / thinking / running-tool name / "waiting" for permission + elapsed time). Reads
+  `~/.claude/statusbar/state.json` via a filesystem watcher — no polling, no network.
+  Docs: **[docs/widgets/claude_code.md](docs/widgets/claude_code.md)**.
+- 📊 **`claude_usage`** — 5-hour / 7-day usage %.
+- 🔎 **`quick_launch` search bar** (Ctrl+Space) — frosted pill design, **inline calculator**
+  (type `12*8+4`, the result shows on the bar, **Enter copies it**), app search with spaced
+  rows, and drag-to-move by the magnifier icon.
+- 🎨 **Bundled [`config/`](config)** — `config.yaml` + `styles.css` deployed by `setup.ps1`.
 
-```bash
-python -m venv .venv
-.venv\Scripts\python -m pip install -e .
+### Python 3.12 details
+
+Upstream YASB targets **Python 3.14**. This fork backports it to **3.12**: annotations,
+`except (A, B)` syntax, QObject-singleton init, and a `faulthandler` arg are all handled in
+the source; the one external dependency that hard-requires 3.14 (`qt-css-engine`) is patched
+in place by [`scripts/patch_py312_deps.py`](scripts/patch_py312_deps.py), which `setup.ps1`
+runs for you. Manual equivalent, if you prefer:
+
+```powershell
+py -3.12 -m venv .venv
+.venv\Scripts\python -m pip install -e . --ignore-requires-python
+.venv\Scripts\python scripts\patch_py312_deps.py
+# then copy config\config.yaml and config\styles.css into %USERPROFILE%\.config\yasb
 .venv\Scripts\pythonw src\main.py
 ```
 
-**Branches:**
-- **`main`** — YASB + the `claude_code` widget (run this)
-- **`feat/claude-code-widget`** — just the widget, isolated for a clean PR to upstream
-- **`my-config`** — an example `~/.config/yasb` (`config.yaml` + `styles.css`) wiring up both Claude widgets
+On Python 3.14 none of the extra steps are needed — a plain `pip install -e .` works.
 
 Everything below is the original upstream YASB README.
 
