@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from core.validation.widgets.base_model import CustomBaseModel
 
 

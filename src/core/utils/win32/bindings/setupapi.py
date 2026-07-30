@@ -1,4 +1,5 @@
 """Bindings for SetupAPI functions (device enumeration)."""
+from __future__ import annotations
 
 from ctypes import POINTER, c_void_p, windll
 from ctypes.wintypes import BOOL, DWORD, HANDLE, HWND, LPCWSTR

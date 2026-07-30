@@ -192,6 +192,7 @@ Tips
     - You can add custom settings to your config model (api_key, max_items,
       etc.) and read them from self.config in __init__.
 """
+from __future__ import annotations
 
 from core.utils.shell_utils import shell_open
 from core.widgets.services.quick_launch.base_provider import (

@@ -1,6 +1,7 @@
 """
 This is very experimental and may not work as expected. It uses ctypes to interact with the Windows Bluetooth API. We need to test this on more systems to ensure it works as expected.
 """
+from __future__ import annotations
 
 import ctypes
 import logging

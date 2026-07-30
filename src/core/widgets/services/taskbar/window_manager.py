@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import ctypes
 import logging
 
@@ -116,7 +118,7 @@ class _ShellHookEventFilter(QAbstractNativeEventFilter):
                 manager._handle_shell_hook_message(int(msg.wParam), int(msg.lParam))
                 return True, 0
 
-        except KeyboardInterrupt, SystemExit:
+        except (KeyboardInterrupt, SystemExit):
             raise
         except Exception:
             pass
@@ -265,7 +267,7 @@ class TaskbarWindowManager(QObject):
                         else:
                             if hwnd_int in self._windows:
                                 self._schedule_window_update(hwnd_int)
-                except KeyboardInterrupt, SystemExit:
+                except (KeyboardInterrupt, SystemExit):
                     raise
                 except Exception:
                     return

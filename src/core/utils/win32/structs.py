@@ -1,4 +1,5 @@
 """win32 types and structs"""
+from __future__ import annotations
 
 import ctypes as ct
 import uuid

@@ -10,6 +10,7 @@ to a narrow default and cuts long package IDs with like `Microsoft.VisualStudio.
 
 To work around this, we use the Windows ConPTY API
 """
+from __future__ import annotations
 
 import ctypes
 import ctypes.wintypes
@@ -253,7 +254,7 @@ def _parse_table(
                     value = value[:-1]
                 row[column_names[c]] = value
 
-        except IndexError, ValueError:
+        except (IndexError, ValueError):
             continue
 
         name = row.get("name", "")

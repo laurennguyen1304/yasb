@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pydantic import Field
 
 from core.validation.widgets.base_model import (

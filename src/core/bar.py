@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 
 from PyQt6.QtCore import QEvent, QRect, Qt, QTimer, pyqtSignal

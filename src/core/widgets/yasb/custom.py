@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import re
 import subprocess
@@ -149,7 +151,7 @@ class CustomWidget(BaseWidget):
                 else:
                     tooltip_text = self.config.tooltip_label
 
-            except KeyError, AttributeError, TypeError, IndexError:
+            except (KeyError, AttributeError, TypeError, IndexError):
                 # If formatting fails, fall back to showing raw data
                 tooltip_text = str(self._exec_data)
         else:

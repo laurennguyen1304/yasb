@@ -1,6 +1,7 @@
 """
 Utilities for launching files, URLs, and shortcuts via the Windows shell.
 """
+from __future__ import annotations
 
 import threading
 

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import ctypes
 import ctypes.wintypes
 import logging
@@ -81,7 +83,7 @@ def is_running_under_emulation():
         if IsWow64Process2(GetCurrentProcess(), ctypes.byref(process_machine), ctypes.byref(native_machine)):
             # If process_machine is not 0, it's running under emulation
             return process_machine.value != 0
-    except AttributeError, Exception:
+    except (AttributeError, Exception):
         pass
 
     return False

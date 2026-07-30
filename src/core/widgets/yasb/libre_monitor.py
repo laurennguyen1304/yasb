@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import re
 from collections import deque
@@ -178,7 +180,7 @@ class LibreHardwareMonitorWidget(BaseWidget):
         try:
             if getattr(self, "_menu", None) is not None and isinstance(self._menu, QWidget) and self._menu.isVisible():
                 return True
-        except RuntimeError, AttributeError:
+        except (RuntimeError, AttributeError):
             return False
 
     def _get_histogram_bar(self, value: float, value_min: float, value_max: float):

@@ -1,4 +1,5 @@
 """Multi-monitor region select overlay (physical-pixel selection)."""
+from __future__ import annotations
 
 from PyQt6.QtCore import QObject, QPoint, QRect, Qt
 from PyQt6.QtGui import QBrush, QColor, QFont, QFontMetrics, QPainter, QPen, QPixmap

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import logging
 import re
@@ -318,7 +320,7 @@ class HackerNewsProvider(BaseProvider):
                 for key, entry in all_cache.items():
                     if key not in self._cache:
                         self._cache[key] = (entry["ts"], entry["items"])
-            except FileNotFoundError, json.JSONDecodeError, KeyError:
+            except (FileNotFoundError, json.JSONDecodeError, KeyError):
                 pass
 
         if cache_key in self._cache:
@@ -330,7 +332,7 @@ class HackerNewsProvider(BaseProvider):
             try:
                 with open(_CACHE_FILE, encoding="utf-8") as f:
                     all_cache: dict = json.load(f)
-            except FileNotFoundError, json.JSONDecodeError:
+            except (FileNotFoundError, json.JSONDecodeError):
                 all_cache = {}
 
             all_cache[cache_key] = {"ts": ts, "items": items}

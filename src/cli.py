@@ -8,6 +8,7 @@ python -X importtime src/cli.py 2> import_times.log
 pip install tuna
 tuna import_times.log
 """
+from __future__ import annotations
 
 import argparse
 import ctypes

@@ -1,4 +1,5 @@
 """Pydantic models for weatherapi.com API response validation."""
+from __future__ import annotations
 
 import re
 

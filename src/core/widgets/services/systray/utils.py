@@ -1,4 +1,5 @@
 """Utils for systray widget"""
+from __future__ import annotations
 
 import ctypes
 import ctypes as ct

@@ -37,6 +37,7 @@ Adding a new deprecation
 The class name key (e.g. "HomeConfig", "BarBlurEffect") must match
 the Pydantic model's __name__ exactly.
 """
+from __future__ import annotations
 
 import logging
 from importlib import import_module

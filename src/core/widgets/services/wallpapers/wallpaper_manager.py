@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import os
 import random
@@ -21,14 +23,18 @@ class WallpaperManager(QObject):
 
     def __new__(cls):
         if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._initialized = False
+            # Initialize the QObject base in __new__ (before publishing to
+            # cls._instance) to avoid a Python 3.12 sip stack overflow; see
+            # AudioInputService for the full explanation.
+            instance = super().__new__(cls)
+            super().__init__(instance)
+            instance._initialized = False
+            cls._instance = instance
         return cls._instance
 
     def __init__(self):
         if self._initialized:
             return
-        super().__init__()
         self._initialized = True
 
         self._image_path = None

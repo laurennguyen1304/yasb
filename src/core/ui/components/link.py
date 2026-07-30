@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from PyQt6.QtCore import QEasingCurve, QParallelAnimationGroup, QPropertyAnimation, QSize, Qt, pyqtProperty
 from PyQt6.QtGui import QColor, QFont, QFontMetrics, QPainter
 from PyQt6.QtWidgets import QApplication, QPushButton, QWidget

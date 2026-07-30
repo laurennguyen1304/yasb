@@ -1,6 +1,7 @@
 """
 Lookup process executable name from an AppUserModelID (AUMID).
 """
+from __future__ import annotations
 
 import ctypes
 import ctypes.wintypes as wt

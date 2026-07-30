@@ -1,4 +1,5 @@
 """Systray tray monitor client that intercepts systray messages"""
+from __future__ import annotations
 
 import atexit
 import logging

@@ -3,6 +3,7 @@ This module provides utilities for working with App User Model IDs (AUMIDs).
 It includes functions to retrieve the AUMID for a given window handle or shortcut file.
 It uses the Windows Shell API to access properties of application windows.
 """
+from __future__ import annotations
 
 import ctypes
 import ctypes.wintypes as wt

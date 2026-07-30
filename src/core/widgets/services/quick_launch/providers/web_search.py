@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from core.utils.shell_utils import shell_open
 from core.widgets.services.quick_launch.base_provider import BaseProvider, ProviderResult
 from core.widgets.services.quick_launch.providers.resources.icons import (

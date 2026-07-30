@@ -1,4 +1,5 @@
 """win32 constants that are missing from win32con"""
+from __future__ import annotations
 
 import ctypes
 from enum import IntEnum

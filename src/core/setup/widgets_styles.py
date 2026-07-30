@@ -1,6 +1,7 @@
 """
 Widget styles for the YASB setup wizard.
 """
+from __future__ import annotations
 
 BASE_WIDGET_STYLE: str = """\
 /* Home Menu */

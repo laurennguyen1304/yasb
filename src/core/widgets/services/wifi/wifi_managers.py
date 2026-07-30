@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import ctypes as ct
 import logging
 import re
@@ -116,14 +118,18 @@ class WiFiWorker(QThread):
 
     def __new__(cls, get_exact: bool = False, poll_interval: int = 1000):
         if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._initialized = False
+            # Initialize the QObject base in __new__ (before publishing to
+            # cls._instance) to avoid a Python 3.12 sip stack overflow; see
+            # AudioInputService for the full explanation.
+            instance = super().__new__(cls)
+            super().__init__(instance)
+            instance._initialized = False
+            cls._instance = instance
         return cls._instance
 
     def __init__(self, get_exact: bool = False, poll_interval: int = 1000):
         if self._initialized:
             return
-        super().__init__()
         self._get_exact = get_exact
         self._poll_interval = poll_interval
         self._initialized = True

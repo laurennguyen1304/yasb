@@ -1,6 +1,7 @@
 """
 YASB Wallpaper engine.
 """
+from __future__ import annotations
 
 import ctypes
 import logging
@@ -635,7 +636,7 @@ class WallpaperEngine(QWidget):
         if wl is not None:
             try:
                 wl.loaded.disconnect()
-            except TypeError, RuntimeError:
+            except (TypeError, RuntimeError):
                 pass
             if wl.isRunning():
                 wl.quit()

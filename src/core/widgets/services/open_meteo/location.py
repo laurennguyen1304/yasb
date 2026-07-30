@@ -3,6 +3,7 @@
 Stores location data (lat, lon, name, etc.) per widget instance in
 ``weather.json`` inside the YASB app data directory.
 """
+from __future__ import annotations
 
 import json
 import logging

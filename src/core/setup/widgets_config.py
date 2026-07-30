@@ -1,6 +1,7 @@
 """
 Widgets configuration for the YASB setup wizard.
 """
+from __future__ import annotations
 
 from core.utils.system import is_windows_10
 

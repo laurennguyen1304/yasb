@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import re
 import time
@@ -635,7 +637,7 @@ class OpenMeteoWidget(BaseWidget):
             if self.config.weather_card.time_format == "12h":
                 return dt.strftime("%I:%M %p").lstrip("0")
             return dt.strftime("%H:%M")
-        except ValueError, AttributeError:
+        except (ValueError, AttributeError):
             return iso_time
 
     def _reload_css(self, label: QLabel):

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 from contextlib import suppress
 from typing import Literal
@@ -334,7 +336,7 @@ class WorkspaceWidget(BaseWidget):
                         elif event["type"] in [KomorebiEvent.TitleUpdate.value]:
                             hwnd = event["content"][1]["hwnd"]
                             self._workspace_buttons[i].update_icon_by_hwnd(hwnd)
-                except IndexError, TypeError:
+                except (IndexError, TypeError):
                     pass
 
             if event["type"] == KomorebiEvent.MoveWorkspaceToMonitorNumber.value:
@@ -355,7 +357,7 @@ class WorkspaceWidget(BaseWidget):
                     self._update_button(prev_workspace_button)
                     new_workspace_button = self._workspace_buttons[self._curr_workspace_index]
                     self._update_button(new_workspace_button)
-                except IndexError, TypeError:
+                except (IndexError, TypeError):
                     self._add_or_update_buttons()
             elif event["type"] in self._update_buttons_event_watchlist:
                 self._add_or_update_buttons()

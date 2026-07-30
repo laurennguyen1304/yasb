@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from core.utils.tooltip import set_tooltip
 from core.validation.widgets.yasb.wallpapers import WallpapersConfig
 from core.widgets.base import BaseWidget

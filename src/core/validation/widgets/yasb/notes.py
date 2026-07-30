@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pydantic import ConfigDict, Field
 
 from core.validation.widgets.base_model import (

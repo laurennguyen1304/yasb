@@ -1,4 +1,5 @@
 """Wrappers for iphlpapi (IP Helper API) win32 API functions"""
+from __future__ import annotations
 
 from ctypes import c_void_p, windll
 from ctypes.wintypes import DWORD, PULONG, ULONG

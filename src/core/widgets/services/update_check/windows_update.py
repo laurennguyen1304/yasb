@@ -6,6 +6,7 @@ COM API (``Microsoft.Update.Session``).
 All functions are synchronous and intended to be called from background
 threads (QThread workers).
 """
+from __future__ import annotations
 
 import logging
 import subprocess

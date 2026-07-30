@@ -4,6 +4,7 @@ Theme detection and token resolution.
 Uses Qt's QStyleHints.colorScheme() to determine dark vs light mode,
 then returns the matching token set from tokens.py.
 """
+from __future__ import annotations
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont, QGuiApplication

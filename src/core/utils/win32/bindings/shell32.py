@@ -3,6 +3,7 @@
 This module exposes the `shell32` handle and sets argtypes/restype for the Shell
 functions we call from Python so ctypes marshaling is explicit and safe.
 """
+from __future__ import annotations
 
 from ctypes import HRESULT, POINTER, c_int, c_uint, c_void_p, c_wchar_p, windll
 

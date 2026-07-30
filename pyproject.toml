@@ -11,7 +11,7 @@ authors = [
 ]
 license = "MIT"
 readme = "README.md"
-requires-python = ">= 3.14"
+requires-python = ">= 3.12"
 dependencies = [
     "pyqt6==6.10.2",
     "pydantic==2.13.4",
@@ -80,7 +80,7 @@ packages = ["src/core"]
 
 [tool.ruff]
 line-length = 120
-target-version = "py314"
+target-version = "py312"
 extend-exclude = [
     "__pycache__",
     ".github",

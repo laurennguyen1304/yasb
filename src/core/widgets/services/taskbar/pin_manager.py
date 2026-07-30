@@ -8,6 +8,7 @@ Handles all pinned application functionality including:
 - Signal coordination between taskbar instances
 - Launching pinned applications
 """
+from __future__ import annotations
 
 import json
 import logging

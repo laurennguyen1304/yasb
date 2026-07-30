@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from PyQt6.QtCore import QTimer
 
 from core.widgets.services.ai_chat.constants import THINKING_ANIMATION_INTERVAL_MS, THINKING_PLACEHOLDER

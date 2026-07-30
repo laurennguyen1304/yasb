@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime
 
 from PyQt6.QtCore import QPropertyAnimation, Qt, QTimer

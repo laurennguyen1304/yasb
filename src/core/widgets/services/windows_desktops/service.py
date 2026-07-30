@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 
 from PyQt6.QtCore import QObject, QTimer, pyqtSignal
@@ -68,13 +70,17 @@ class WindowsDesktopService(QObject):
 
     def __new__(cls):
         if cls._instance is None:
-            cls._instance = super().__new__(cls)
+            # Initialize the QObject base in __new__ (before publishing to
+            # cls._instance) to avoid a Python 3.12 sip stack overflow; see
+            # AudioInputService for the full explanation.
+            instance = super().__new__(cls)
+            super().__init__(instance)
+            cls._instance = instance
         return cls._instance
 
     def __init__(self):
         if WindowsDesktopService._init_done:
             return
-        super().__init__()
         WindowsDesktopService._init_done = True
         # Connect internal COM marshaling signals
         self._sig_com_desktop_changed.connect(self._handle_desktop_changed)

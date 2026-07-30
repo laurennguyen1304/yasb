@@ -16,6 +16,7 @@ WMO Weather interpretation codes (WW):
   95: Thunderstorm (slight or moderate)
   96, 99: Thunderstorm with hail (slight, heavy)
 """
+from __future__ import annotations
 
 #  SVG Icon Constants
 

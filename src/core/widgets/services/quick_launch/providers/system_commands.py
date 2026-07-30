@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 
 from core.widgets.services.quick_launch.base_provider import BaseProvider, ProviderResult

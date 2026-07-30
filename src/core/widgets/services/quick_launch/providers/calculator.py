@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import ast
 import logging
 import math
@@ -89,17 +91,25 @@ class CalculatorProvider(BaseProvider):
         # Match configured prefix or auto-detect math expressions
         if self.prefix and text.startswith(self.prefix):
             return True
-        if not _MATH_PATTERN.match(text):
+        # Accept an optional leading "=" so both "=2+2" and "2+2" are detected
+        # even when running prefix-less (the worker only routes prefixed
+        # providers on "<prefix> " with a trailing space).
+        expr = text[1:].strip() if text.startswith("=") else text
+        if not expr or not _MATH_PATTERN.match(expr):
             return False
         # Must contain at least one digit and one operator
-        has_digit = any(c.isdigit() for c in text)
-        has_operator = any(c in text for c in "+-*/%^") or any(
-            fn in text.lower() for fn in ("sqrt", "sin", "cos", "log")
+        has_digit = any(c.isdigit() for c in expr)
+        has_operator = any(c in expr for c in "+-*/%^") or any(
+            fn in expr.lower() for fn in ("sqrt", "sin", "cos", "log")
         )
         return has_digit and has_operator
 
     def get_results(self, text: str, **kwargs) -> list[ProviderResult]:
         query = self.get_query_text(text).replace(",", "")
+        # In auto-detect (prefix-less) mode get_query_text keeps a leading "="
+        # the user may have typed; strip it before evaluating.
+        if query.startswith("="):
+            query = query[1:].strip()
         if not query:
             return [
                 ProviderResult(

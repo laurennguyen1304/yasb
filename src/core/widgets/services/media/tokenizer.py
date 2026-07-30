@@ -2,6 +2,7 @@
 Used to tokenize a string with placeholders and separators.
 Can filter out separators that are not enclosed by placeholders.
 """
+from __future__ import annotations
 
 import re
 from dataclasses import dataclass

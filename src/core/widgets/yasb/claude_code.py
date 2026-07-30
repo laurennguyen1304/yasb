@@ -11,6 +11,7 @@ QFileSystemWatcher; a modest timer only advances the elapsed counter. This is
 the Windows/YASB counterpart to the macOS "claude-status-bar" menu-bar app and
 consumes the exact same state-file contract.
 """
+from __future__ import annotations
 
 import json
 import os

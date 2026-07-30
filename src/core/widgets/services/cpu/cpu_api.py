@@ -5,6 +5,7 @@ Note: If PDH counters are broken/corrupted, this module will return
 safe default values instead of crashing. Users can repair PDH counters
 by running: lodctr /r (as Administrator) or rebuilding performance counters.
 """
+from __future__ import annotations
 
 import ctypes
 import logging

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import ctypes
 import logging
 from ctypes import POINTER, Structure, c_ulong, sizeof, windll, wintypes

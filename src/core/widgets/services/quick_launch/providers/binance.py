@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import logging
 import re
@@ -260,7 +262,7 @@ class BinanceProvider(BaseProvider):
                 if clean_reason.startswith("[Errno"):
                     try:
                         clean_reason = clean_reason.split("]", 1)[1].strip().capitalize()
-                    except IndexError, AttributeError:
+                    except (IndexError, AttributeError):
                         pass
                 self._error_msg = f"Network Error: {clean_reason}"
             return None

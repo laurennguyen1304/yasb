@@ -5,6 +5,7 @@ This module provides a unified interface for handling application updates across
 both the automatic background update checker and the GUI update dialog. It supports
 architecture-specific updates (x64 and ARM64) and ensures version consistency.
 """
+from __future__ import annotations
 
 import json
 import logging

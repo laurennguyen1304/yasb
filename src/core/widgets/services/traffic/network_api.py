@@ -1,6 +1,7 @@
 """
 Windows Network API wrapper
 """
+from __future__ import annotations
 
 import ctypes
 import socket

@@ -1,4 +1,5 @@
 """Update dialog for checking, downloading, and installing application updates."""
+from __future__ import annotations
 
 import logging
 import os

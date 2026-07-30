@@ -1,4 +1,5 @@
 """Per-monitor freeze overlay panel."""
+from __future__ import annotations
 
 from typing import TYPE_CHECKING
 

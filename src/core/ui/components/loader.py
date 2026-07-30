@@ -1,6 +1,7 @@
 """
 Loading indicators: Spinner (indeterminate circular) and LoaderLine (horizontal).
 """
+from __future__ import annotations
 
 from PyQt6.QtCore import QEasingCurve, QElapsedTimer, QEvent, QObject, QPropertyAnimation, Qt, QTimer, pyqtProperty
 from PyQt6.QtGui import QColor, QPainter, QPaintEvent, QPalette, QPen

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import ctypes as ct
 
 from core.utils.win32.bindings.kernel32 import FormatMessage

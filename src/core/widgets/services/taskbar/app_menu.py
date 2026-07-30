@@ -4,6 +4,7 @@ Context menu utilities for taskbar widget.
 This module provides context menu functionality for taskbar buttons,
 including app-specific menu items for File Explorer, Recycle Bin, Edge, Firefox, VS Code, and Windows Terminal.
 """
+from __future__ import annotations
 
 import json
 import logging

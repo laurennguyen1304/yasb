@@ -1,4 +1,5 @@
 """Shortcut discovery helpers for the taskbar pin manager."""
+from __future__ import annotations
 
 import logging
 import os

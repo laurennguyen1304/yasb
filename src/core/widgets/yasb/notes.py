@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import datetime
 import json
 import logging
@@ -539,7 +541,7 @@ class NotesWidget(BaseWidget):
                 date_label = QLabel(date_str)
                 date_label.setProperty("class", "date")
                 text_layout.addWidget(date_label)
-            except ValueError, TypeError:
+            except (ValueError, TypeError):
                 pass
 
         container_layout.addWidget(text_container)

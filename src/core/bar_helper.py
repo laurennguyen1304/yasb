@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import ctypes
 import logging
 import os
@@ -493,18 +495,25 @@ class AppBarManager(QAbstractNativeEventFilter):
 
     def __new__(cls):
         if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._bars = {}
-            cls._instance._bar_intended_state = {}  # Track intended visibility (True=visible, False=hidden)
-            cls._instance._swp_flags = SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE
-            cls._instance._ready = False  # Enabled after first bar registers
-            cls._instance._reregister_pending = False  # Coalesces multiple WM_TASKBARCREATED into one
+            # Initialize the QObject base and all state in __new__, on a local,
+            # and publish cls._instance last. On Python 3.12, running
+            # QObject.__init__() while a same-class instance is already reachable
+            # as a class attribute makes sip recurse into it and crash with a
+            # native stack overflow. Safe on 3.14 too.
+            instance = super().__new__(cls)
+            super().__init__(instance)
+            instance._bars = {}
+            instance._bar_intended_state = {}  # Track intended visibility (True=visible, False=hidden)
+            instance._swp_flags = SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE
+            instance._ready = False  # Enabled after first bar registers
+            instance._reregister_pending = False  # Coalesces multiple WM_TASKBARCREATED into one
+            instance._initialized = True
+            cls._instance = instance
         return cls._instance
 
     def __init__(self):
-        if not hasattr(self, "_initialized"):
-            super().__init__()
-            self._initialized = True
+        # QObject base and state are initialised in __new__; nothing to do here.
+        pass
 
     def _ensure_installed(self):
         """Install the native event filter on first use"""

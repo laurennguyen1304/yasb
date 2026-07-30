@@ -2,6 +2,7 @@
 Syntax highlighting module for code blocks in AI chat.
 Provides simple regex-based syntax highlighting with inline color styles.
 """
+from __future__ import annotations
 
 import re
 

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import io
 import logging
@@ -276,7 +278,7 @@ class WindowsMedia(QObject, metaclass=QSingleton):
             raw_rate = playback.playback_rate
             try:
                 playback_rate = float(raw_rate) if raw_rate is not None else 1.0
-            except TypeError, ValueError:
+            except (TypeError, ValueError):
                 playback_rate = 1.0
             if playback_rate <= 0:
                 playback_rate = 1.0

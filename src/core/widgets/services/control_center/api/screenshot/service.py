@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 
 from core.widgets.services.control_center.api.screenshot.capture import capture_screens

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import threading
 
@@ -16,8 +18,16 @@ class AudioInputService(QObject):
 
     def __new__(cls):
         if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._initialized = False
+            # Initialize the QObject base in __new__ (before publishing the
+            # instance to cls._instance) instead of in __init__. On Python 3.12,
+            # running QObject.__init__() while a same-class instance is reachable
+            # as a class attribute makes sip recurse into it and crash with a
+            # native stack overflow. Building in a local and assigning last avoids
+            # that; behaviour is unchanged on 3.14.
+            instance = super().__new__(cls)
+            super().__init__(instance)
+            instance._initialized = False
+            cls._instance = instance
         return cls._instance
 
     def __init__(self):
@@ -25,7 +35,6 @@ class AudioInputService(QObject):
             return
 
         self._initialized = True
-        super().__init__()
 
         self._widgets = []
         self._microphone_interface = None

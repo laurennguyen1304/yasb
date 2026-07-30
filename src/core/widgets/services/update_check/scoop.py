@@ -4,6 +4,7 @@ Provides synchronous functions for interacting with the Scoop CLI:
 - check_updates(): Refresh buckets then list packages with available upgrades
 - upgrade_packages(): Upgrade multiple packages in a visible terminal
 """
+from __future__ import annotations
 
 import logging
 import re
@@ -104,7 +105,7 @@ def _parse_table(
 
                 row[column_names[c]] = value
 
-        except IndexError, ValueError:
+        except (IndexError, ValueError):
             continue
 
         name = row.get("name", "")

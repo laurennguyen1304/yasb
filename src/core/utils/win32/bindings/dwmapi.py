@@ -1,4 +1,5 @@
 """Wrappers for dwmapi Win32 API with typed signatures."""
+from __future__ import annotations
 
 import ctypes
 from ctypes import POINTER, windll

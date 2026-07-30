@@ -1,4 +1,5 @@
 """Systray container widget and systray icon widget"""
+from __future__ import annotations
 
 import ctypes as ct
 from ctypes import byref

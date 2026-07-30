@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import math
 from enum import StrEnum
 from functools import lru_cache

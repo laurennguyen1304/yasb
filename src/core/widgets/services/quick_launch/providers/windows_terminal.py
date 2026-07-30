@@ -3,6 +3,7 @@
 Lists profiles from Windows Terminal (stable and preview).
 Supports launching profiles normally or as administrator via context menu.
 """
+from __future__ import annotations
 
 import json
 import logging

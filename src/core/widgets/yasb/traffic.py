@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import re
 
@@ -284,7 +286,7 @@ class TrafficWidget(BaseWidget):
                 if self.menu_labels["internet-info"].property("class") != target_class:
                     self.menu_labels["internet-info"].setProperty("class", target_class)
                     refresh_widget_style(self.menu_labels["internet-info"])
-            except RuntimeError, AttributeError:
+            except (RuntimeError, AttributeError):
                 pass
 
     def _toggle_label(self):
@@ -589,6 +591,6 @@ class TrafficWidget(BaseWidget):
                 and self._menu_widget.isVisible()
             ):
                 return True
-        except RuntimeError, AttributeError:
+        except (RuntimeError, AttributeError):
             return False
         return False

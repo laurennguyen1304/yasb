@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from PyQt6.QtCore import QEvent, Qt
 from PyQt6.QtGui import QKeyEvent
 from PyQt6.QtWidgets import QApplication, QMenu

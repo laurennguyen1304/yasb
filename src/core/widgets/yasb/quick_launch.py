@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import logging
 
@@ -423,6 +425,8 @@ class QuickLaunchWidget(BaseWidget):
         self._remember_last_query: bool = self.config.remember_last_query
         self._prediction_text: str = ""
         self._preview_visible: bool = False
+        # Value of an inline calculation shown on the search bar (None = not a calc).
+        self._inline_calc_value: str | None = None
 
         self._position_locked = True
         self._saved_position: QPoint | None = None
@@ -608,6 +612,10 @@ class QuickLaunchWidget(BaseWidget):
         search_icon = QLabel(ICON_SEARCH_INPUT)
         search_icon.setProperty("class", "search-icon")
         search_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # The magnifier doubles as a drag handle: press and drag it to move the
+        # popup anywhere; the position is remembered. Keeps the input typeable.
+        search_icon.setCursor(QCursor(Qt.CursorShape.SizeAllCursor))
+        search_icon.installEventFilter(self)
         search_layout.addWidget(search_icon)
 
         prefix_chip = QLabel()
@@ -650,6 +658,7 @@ class QuickLaunchWidget(BaseWidget):
         # Results area virtualized QListView with custom delegate for styling and icon support
         results_view = ResultListView()
         results_view.setProperty("class", "results-list-view")
+        results_view.setSpacing(3)  # gap between result rows (avoids stuck/overlapping items)
         results_view.setStyleSheet("""
             .results-list-view {
                 background: transparent;
@@ -770,6 +779,7 @@ class QuickLaunchWidget(BaseWidget):
         popup.content_widget = content_widget
         popup.prefix_chip = prefix_chip
         popup.search_input = search_input
+        popup.search_icon = search_icon
         popup.prediction_label = prediction_input
         popup.results_view = results_view
         popup.empty_widget = empty_widget
@@ -848,6 +858,26 @@ class QuickLaunchWidget(BaseWidget):
     def _apply_results(self, results: list):
         prev_selected = self._selected_index
         self._selected_index = -1
+
+        # Inline calculator: pull a valid calculator result out of the list and
+        # show it on the search bar instead of as a panel row. Enter copies it.
+        self._inline_calc_value = None
+        calc = next(
+            (r for r in results if r.provider == "calculator" and r.action_data.get("value")),
+            None,
+        )
+        if calc is not None:
+            self._inline_calc_value = calc.action_data["value"]
+            results = [r for r in results if r.provider != "calculator"]
+
+        # Pure calculation (nothing else to show): the result lives on the search
+        # bar; clear the result rows (panel stays centered where it is).
+        if not results and self._inline_calc_value is not None:
+            self._popup.results_view.setVisible(False)
+            self._popup.empty_widget.setVisible(False)
+            self._result_model.set_results([], 0, 1.0)
+            self._clear_preview()
+            return
 
         if not results:
             has_text = bool(self._pending_search_text.strip())
@@ -1208,13 +1238,29 @@ class QuickLaunchWidget(BaseWidget):
         self._update_prediction()
 
     def _update_prediction(self):
-        """Show autocomplete ghost text from the first apps-provider result matching the typed text."""
+        """Show autocomplete ghost text, or an inline calculation result, on the search bar."""
         if not self._popup or not self._result_model:
             self._prediction_text = ""
             return
         overlay = self._popup.prediction_label
         search_input = self._popup.search_input
         typed = search_input.text()
+
+        # Inline calculation result: "<expr>   =   <result>" shown on the bar.
+        if self._inline_calc_value is not None:
+            effect = overlay.graphicsEffect()
+            if effect is not None:
+                effect.setOpacity(0.7)
+            self._prediction_text = f"{typed}   =   {self._inline_calc_value}"
+            overlay.setText(self._prediction_text)
+            overlay.resize(search_input.size())
+            overlay.setVisible(True)
+            return
+        # Restore the faint ghost-text opacity for normal autocomplete.
+        effect = overlay.graphicsEffect()
+        if effect is not None:
+            effect.setOpacity(0.4)
+
         prediction = ""
         if typed and search_input.cursorPosition() == len(typed):
             for i in range(self._result_model.rowCount()):
@@ -1250,7 +1296,9 @@ class QuickLaunchWidget(BaseWidget):
             self._set_selected(self._next_selectable(self._selected_index, -1, count))
             return event.accept()
         if key in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
-            if 0 <= self._selected_index < count:
+            if self._inline_calc_value is not None:
+                self._copy_inline_calc()
+            elif 0 <= self._selected_index < count:
                 self._execute_result(self._selected_index)
             return event.accept()
         if self._popup and not self._popup.search_input.hasFocus():
@@ -1260,6 +1308,20 @@ class QuickLaunchWidget(BaseWidget):
                 return
             self._popup.search_input.setFocus()
             self._popup.search_input.keyPressEvent(event)
+
+    def _copy_inline_calc(self):
+        """Copy the inline calculation result to the clipboard, confirming on the bar."""
+        value = self._inline_calc_value
+        if not value:
+            return
+        clipboard = QApplication.clipboard()
+        if clipboard:
+            clipboard.setText(value)
+        if self._popup:
+            typed = self._popup.search_input.text()
+            overlay = self._popup.prediction_label
+            overlay.setText(f"{typed}   =   {value}   (copied)")
+            overlay.setVisible(True)
 
     def _execute_result(self, index: int):
         if not self._result_model:
@@ -1411,6 +1473,26 @@ class QuickLaunchWidget(BaseWidget):
 
     def eventFilter(self, obj, event):
         """Intercept mouse events on search_input for drag-to-move and prefix removal."""
+        # Drag the popup by its magnifier icon (works regardless of position lock,
+        # so the text field stays clickable/typeable).
+        if self._popup and obj is self._popup.search_icon:
+            etype = event.type()
+            if etype == QEvent.Type.MouseButtonPress and event.button() == Qt.MouseButton.LeftButton:
+                self._drag_offset = event.globalPosition().toPoint() - self._popup.pos()
+                self._set_drag_opacity(0.6)
+                return True
+            if etype == QEvent.Type.MouseMove and self._drag_offset is not None:
+                self._popup.move(event.globalPosition().toPoint() - self._drag_offset)
+                return True
+            if etype == QEvent.Type.MouseButtonRelease and self._drag_offset is not None:
+                self._drag_offset = None
+                self._set_drag_opacity(1.0)
+                self._saved_position = self._popup.pos()
+                self._position_locked = True
+                self._persist_position()
+                return True
+            return super().eventFilter(obj, event)
+
         if not self._popup or obj is not self._popup.search_input:
             return super().eventFilter(obj, event)
 

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import ctypes as ct
 from ctypes import wintypes
 from dataclasses import dataclass

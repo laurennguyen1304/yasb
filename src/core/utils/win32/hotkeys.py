@@ -1,4 +1,5 @@
 """Global hotkey support using RegisterHotKey."""
+from __future__ import annotations
 
 import logging
 from ctypes import byref

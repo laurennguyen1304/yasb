@@ -1,4 +1,5 @@
 """Window context helpers for the taskbar pin manager."""
+from __future__ import annotations
 
 import ctypes
 import logging
@@ -99,7 +100,7 @@ def collect_window_context(hwnd: int, window_data: dict[str, Any]) -> WindowCont
                                 # This is a CLSID path (e.g., Recycle Bin), use it directly
                                 explorer_path = folder_path
                                 break
-                    except AttributeError, Exception:
+                    except (AttributeError, Exception):
                         # Window doesn't have Document/Folder/Self, or COM error - skip it
                         continue
             except Exception as exc:

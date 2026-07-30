@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtGui import QPainter, QPixmap
 from PyQt6.QtSvg import QSvgRenderer

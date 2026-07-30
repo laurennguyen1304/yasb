@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from enum import Enum
 
 from PyQt6.QtCore import QPointF, QRectF, Qt

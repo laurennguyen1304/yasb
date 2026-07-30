@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import re
 import subprocess
@@ -27,7 +29,7 @@ def _decode(raw: bytes) -> str:
     for enc in ("utf-16", "utf-8", "cp1252"):
         try:
             return raw.decode(enc).strip()
-        except UnicodeDecodeError, LookupError:
+        except (UnicodeDecodeError, LookupError):
             continue
     return raw.decode("utf-8", errors="replace").strip()
 

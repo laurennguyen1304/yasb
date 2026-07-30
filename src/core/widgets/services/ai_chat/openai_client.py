@@ -1,6 +1,7 @@
 """
 Ai Chat API client for config-driven providers (using OpenAI client only)
 """
+from __future__ import annotations
 
 import logging
 

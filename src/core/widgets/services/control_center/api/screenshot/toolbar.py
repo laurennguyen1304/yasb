@@ -1,4 +1,5 @@
 """Selection toolbar (copy / save / edit / cancel)."""
+from __future__ import annotations
 
 from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtGui import QColor, QPainter, QPen

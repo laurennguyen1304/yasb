@@ -1,6 +1,7 @@
 """
 GitHub Copilot API client for fetching AI credits billing usage data.
 """
+from __future__ import annotations
 
 import calendar
 import json

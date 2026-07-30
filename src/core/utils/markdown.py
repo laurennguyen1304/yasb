@@ -6,6 +6,7 @@ and horizontal rules.
 Produces clean semantic HTML without inline styles
 so that QTextDocument.defaultStyleSheet CSS rules work as expected.
 """
+from __future__ import annotations
 
 import re
 from html import escape as html_escape

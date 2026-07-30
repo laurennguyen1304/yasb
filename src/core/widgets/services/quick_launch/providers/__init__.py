@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from .apps import *
 from .binance import *
 from .bookmarks import *

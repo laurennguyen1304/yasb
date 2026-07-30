@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import faulthandler
 import logging
 import sys
@@ -100,7 +102,11 @@ def init_logger():
     console_handler.setFormatter(ColoredFormatter(CONSOLE_FORMAT, datefmt=CONSOLE_DATETIME))
     logging.basicConfig(level=logging.DEBUG, handlers=[file_handler, console_handler], encoding="utf-8")
 
-    faulthandler.enable(file=file_handler.stream, all_threads=True, c_stack=True)
+    # `c_stack` was added to faulthandler.enable() in Python 3.14; pass it only when supported.
+    if sys.version_info >= (3, 14):
+        faulthandler.enable(file=file_handler.stream, all_threads=True, c_stack=True)
+    else:
+        faulthandler.enable(file=file_handler.stream, all_threads=True)
     logging.info("%s v%s", APP_NAME, BUILD_VERSION)
 
 

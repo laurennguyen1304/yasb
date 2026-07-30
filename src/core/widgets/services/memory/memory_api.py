@@ -1,4 +1,5 @@
 """Windows native API for memory statistics."""
+from __future__ import annotations
 
 import ctypes
 import logging

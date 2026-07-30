@@ -1,4 +1,5 @@
 """Lightweight QObject validity check - no heavy dependencies."""
+from __future__ import annotations
 
 from typing import TypeGuard
 

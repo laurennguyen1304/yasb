@@ -1,4 +1,5 @@
 """Wrappers for psapi (Process Status API) win32 API functions"""
+from __future__ import annotations
 
 from ctypes import POINTER, Array, c_void_p, c_wchar, c_wchar_p, windll
 from ctypes.wintypes import BOOL, DWORD, HANDLE, HMODULE

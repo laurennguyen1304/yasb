@@ -1,4 +1,5 @@
 """Per-monitor freeze capture (Qt grab + Win32 physical rects)."""
+from __future__ import annotations
 
 from dataclasses import dataclass
 

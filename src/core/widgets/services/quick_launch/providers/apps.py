@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import ctypes
 import ctypes.wintypes
 import json
@@ -152,7 +154,7 @@ def _resolve_squirrel_target(target: str, args: str) -> str | None:
     try:
         idx = [p.lower() for p in parts].index("--processstart")
         exe_name = parts[idx + 1].strip('"')
-    except ValueError, IndexError:
+    except (ValueError, IndexError):
         return None
     parent = os.path.dirname(target)
     # Pick the highest-versioned app-* directory

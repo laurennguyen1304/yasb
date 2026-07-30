@@ -1,4 +1,5 @@
 """Base mixin for top-level views (dialogs, main windows, splash screens)."""
+from __future__ import annotations
 
 import os
 

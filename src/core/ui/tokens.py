@@ -9,6 +9,7 @@ Reference: github.com/microsoft/microsoft-ui-xaml/blob/main/src/controls/dev/Com
 Note: Some color tokens are intentionally omitted as they are not relevant to YASB's UI components or themes,
 some color values have been tweaked for better contrast and aesthetics in the context of a desktop application.
 """
+from __future__ import annotations
 
 ColorTokens = dict[str, dict[str, str]]
 

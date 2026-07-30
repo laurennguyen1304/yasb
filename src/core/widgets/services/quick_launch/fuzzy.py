@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import re
 
 _CAMEL_RE = re.compile(r"(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")

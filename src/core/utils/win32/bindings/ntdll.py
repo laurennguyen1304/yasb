@@ -1,4 +1,5 @@
 """Wrappers for ntdll win32 API functions"""
+from __future__ import annotations
 
 from ctypes import POINTER, c_void_p, windll
 from ctypes.wintypes import HANDLE, LONG, ULONG

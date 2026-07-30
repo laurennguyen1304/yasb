@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from yaml import dump as yaml_dump
 
 from core.setup.bar_config import CONFIG_HEADER, ROOT_BAR, ROOT_CONFIG, ROOT_STYLE

@@ -2,6 +2,7 @@
 Brightness service using Windows API.
 Provides DDC/CI support for external monitors and LCD support for laptops.
 """
+from __future__ import annotations
 
 import logging
 import threading

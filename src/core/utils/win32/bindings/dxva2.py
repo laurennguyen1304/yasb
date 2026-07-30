@@ -1,4 +1,5 @@
 """Wrappers for dxva2 win32 API functions for monitor brightness control via DDC/CI"""
+from __future__ import annotations
 
 import ctypes.wintypes as wintypes
 from ctypes import POINTER, Structure, windll

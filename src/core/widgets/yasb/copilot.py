@@ -2,6 +2,7 @@
 GitHub Copilot Usage Widget for YASB.
 Displays AI credits billing usage data with a popup showing detailed statistics.
 """
+from __future__ import annotations
 
 import os
 import re

@@ -1,4 +1,5 @@
 """Bindings for PDH (Performance Data Helper) API."""
+from __future__ import annotations
 
 from ctypes import POINTER, c_void_p, windll
 from ctypes.wintypes import DWORD, HANDLE, LONG, LPCWSTR

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import QApplication, QLabel, QWidget
 

@@ -1,4 +1,5 @@
 """Wrappers for powerprof win32 API functions to make them easier to use and have proper types"""
+from __future__ import annotations
 
 from ctypes import POINTER, windll, wintypes
 

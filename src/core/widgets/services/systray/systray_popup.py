@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import ctypes
 
 from PyQt6.QtCore import QEvent, QPoint, QPropertyAnimation, QRect, Qt, QTimer, pyqtSignal

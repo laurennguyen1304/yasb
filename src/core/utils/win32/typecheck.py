@@ -2,6 +2,7 @@
 Type checking helpers for ctypes
 Required for private types (_CArgObject, _CFunctionType, _Pointer) not exposed to the public API
 """
+from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 

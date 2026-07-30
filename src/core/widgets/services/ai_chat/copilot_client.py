@@ -1,6 +1,7 @@
 """
 Copilot client wrapper for YASB AI Chat widget.
 """
+from __future__ import annotations
 
 import asyncio
 import base64
@@ -598,7 +599,7 @@ class CopilotAiChatClient:
                         msg = msg_data.get("message") or err or raw
                 else:
                     msg = raw
-            except json.JSONDecodeError, TypeError:
+            except (json.JSONDecodeError, TypeError):
                 msg = raw
             logging.warning("Copilot: %s", msg)
             self._active_queue.put(str(msg))

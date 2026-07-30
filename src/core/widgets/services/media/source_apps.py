@@ -11,6 +11,7 @@ use dictionary format:
 For simple applications where AUMID matching is sufficient, use string format:
     "aumid": "Display Name"
 """
+from __future__ import annotations
 
 from typing import Any
 

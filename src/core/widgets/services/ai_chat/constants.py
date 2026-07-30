@@ -1,4 +1,6 @@
 # UI Constants
+from __future__ import annotations
+
 THINKING_PLACEHOLDER = "thinking ..."
 
 # Timeouts and Intervals

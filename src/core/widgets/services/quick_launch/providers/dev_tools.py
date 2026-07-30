@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import base64
 import hashlib
 import json
@@ -351,7 +353,7 @@ class DevToolsProvider(BaseProvider):
                         dt.isoformat(),
                     )
                 )
-            except ValueError, OverflowError, OSError:
+            except (ValueError, OverflowError, OSError):
                 for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%Y/%m/%d %H:%M:%S", "%Y/%m/%d"):
                     try:
                         dt = datetime.strptime(arg_stripped, fmt).replace(tzinfo=UTC)

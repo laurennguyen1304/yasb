@@ -1,4 +1,5 @@
 """Drawing helpers for the screenshot editor (arrow, blur, circle, …)."""
+from __future__ import annotations
 
 from PyQt6.QtCore import QPoint, QPointF, QRect, Qt
 from PyQt6.QtGui import QBrush, QColor, QImage, QPainter, QPen, QPixmap, QPolygonF

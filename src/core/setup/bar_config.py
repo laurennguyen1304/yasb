@@ -1,6 +1,7 @@
 """
 Default root and bar configuration and stylesheet for the YASB Setup Wizard.
 """
+from __future__ import annotations
 
 CONFIG_HEADER = (
     "# yaml-language-server: $schema=https://raw.githubusercontent.com/amnweb/yasb/main/schema.json\n"

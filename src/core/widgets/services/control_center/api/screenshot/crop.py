@@ -1,4 +1,5 @@
 """Physical-space selection mapping and multi-monitor crop stitch."""
+from __future__ import annotations
 
 import math
 

@@ -1,4 +1,5 @@
 """Toolbar SVG icons for screenshot UI."""
+from __future__ import annotations
 
 from PyQt6.QtCore import QRectF, Qt
 from PyQt6.QtGui import QGuiApplication, QIcon, QPainter, QPixmap

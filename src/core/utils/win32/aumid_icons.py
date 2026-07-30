@@ -2,6 +2,7 @@
 Icon extraction utilities for App User Model IDs (AUMIDs).
 Provides functions to extract icons from UWP apps based on their AUMID.
 """
+from __future__ import annotations
 
 import ctypes
 import ctypes.wintypes as wt
