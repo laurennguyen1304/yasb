@@ -52,6 +52,39 @@ def _write_cache(path: str, data: dict[str, Any]) -> None:
         logger.debug("failed to write cache: %s", e)
 
 
+def _pick_limit(limits: Any, groups: set[str]) -> dict[str, Any] | None:
+    """Return the highest-utilization entry in ``limits`` matching any of ``groups``
+    (matched against the ``group`` or ``kind`` field). None if there's no match."""
+    if not isinstance(limits, list):
+        return None
+    matches = [
+        item
+        for item in limits
+        if isinstance(item, dict)
+        and (item.get("group") in groups or item.get("kind") in groups)
+        and item.get("percent") is not None
+    ]
+    if not matches:
+        return None
+    return max(matches, key=lambda item: item.get("percent", 0))
+
+
+def _window(payload: dict[str, Any], top_key: str, limit_groups: set[str]) -> tuple[float | None, str | None]:
+    """Resolve a usage window (utilization %, reset ISO) from the payload.
+
+    Prefers the legacy top-level object (``five_hour`` / ``seven_day``) when it
+    still carries a utilization, and otherwise falls back to the newer ``limits``
+    array. Either can be missing/null on a given account, so both are optional.
+    """
+    obj = payload.get(top_key)
+    if isinstance(obj, dict) and obj.get("utilization") is not None:
+        return float(obj["utilization"]), obj.get("resets_at")
+    limit = _pick_limit(payload.get("limits"), limit_groups)
+    if limit is not None:
+        return float(limit["percent"]), limit.get("resets_at")
+    return None, None
+
+
 def fetch_usage(cache_path: str, cache_ttl: int) -> dict[str, Any]:
     """Return a usage record, hitting the network only when the cache is stale.
 
@@ -76,15 +109,19 @@ def fetch_usage(cache_path: str, cache_ttl: int) -> dict[str, Any]:
         with urllib.request.urlopen(request, timeout=10) as response:
             payload = json.loads(response.read().decode("utf-8"))
 
-        five_raw = float(payload["five_hour"]["utilization"])
-        seven_raw = float(payload["seven_day"]["utilization"])
+        # The endpoint has two shapes: legacy top-level five_hour/seven_day objects,
+        # and a newer `limits` array (group "session" = 5h, "weekly" = 7d). Either
+        # window can be null on a given account, so resolve each independently and
+        # never let one missing field sink the whole fetch.
+        five_raw, five_reset = _window(payload, "five_hour", {"session"})
+        seven_raw, seven_reset = _window(payload, "seven_day", {"weekly", "weekly_scoped"})
         record = {
-            "five": round(five_raw),
+            "five": round(five_raw) if five_raw is not None else None,
             "five_raw": five_raw,
-            "five_reset_iso": payload["five_hour"].get("resets_at"),
-            "seven": round(seven_raw),
+            "five_reset_iso": five_reset,
+            "seven": round(seven_raw) if seven_raw is not None else None,
             "seven_raw": seven_raw,
-            "seven_reset_iso": payload["seven_day"].get("resets_at"),
+            "seven_reset_iso": seven_reset,
             "fetched_at": now,
         }
         _write_cache(cache_path, record)
