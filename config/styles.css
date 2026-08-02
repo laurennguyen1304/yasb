@@ -574,6 +574,92 @@ QToolTip {
     font-family: "Inter", "Google Sans";
     font-size: 14px;
 }
+/* ============================================================
+   Clipboard History — running count on the bar, click to expand
+   a popup listing everything copied system-wide (Ctrl+C anywhere,
+   or a copy-to-clipboard action from another widget/quick_launch).
+   Matches the dark claude-usage-menu look, not the white search bar.
+   ============================================================ */
+.clipboard-history-widget {
+    padding: 0 8px;
+}
+.clipboard-history-widget .label {
+    color: var(--subtext1);
+}
+.clipboard-history-menu {
+    background-color: var(--crust);
+    border: 1px solid #313244;
+    border-radius: 8px;
+    min-width: 320px;
+    max-width: 320px;
+}
+.clipboard-history-menu .header {
+    padding: 10px 14px;
+}
+.clipboard-history-menu .title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+}
+.clipboard-history-menu .clear-button {
+    background: transparent;
+    border: none;
+    color: var(--subtext0);
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 4px;
+}
+.clipboard-history-menu .clear-button:hover {
+    background-color: var(--surface0);
+    color: var(--text);
+}
+.clipboard-history-menu .scroll-area {
+    min-height: 60px;
+    max-height: 360px;
+}
+.clipboard-history-menu .entry {
+    padding: 8px 14px;
+}
+.clipboard-history-menu .entry.text:hover {
+    background-color: var(--surface0);
+}
+.clipboard-history-menu .preview {
+    font-size: 12px;
+    color: var(--text);
+}
+.clipboard-history-menu .entry.image .preview {
+    color: var(--subtext0);
+    font-style: italic;
+}
+.clipboard-history-menu .time {
+    font-size: 10px;
+    color: var(--overlay0);
+    padding-top: 2px;
+}
+.clipboard-history-menu .delete-button {
+    background: transparent;
+    border: none;
+    color: var(--overlay0);
+    font-size: 13px;
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+.clipboard-history-menu .delete-button:hover {
+    background-color: var(--surface1);
+    color: var(--red);
+}
+.clipboard-history-menu .empty-icon {
+    color: var(--overlay0);
+    font-family: "JetBrainsMono NFP";
+    font-size: 20px;
+    padding: 24px 0 4px 0;
+}
+.clipboard-history-menu .empty-text {
+    color: var(--subtext0);
+    font-size: 12px;
+    padding-bottom: 20px;
+}
+
 .quick-launch-popup .results-empty-icon {
     color: #c3c8d0;
     font-family: "JetBrainsMono NFP";

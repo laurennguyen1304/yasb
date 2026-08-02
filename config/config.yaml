@@ -52,6 +52,7 @@ bars:
       right: [
         "claude_code",
         "claude_usage",
+        "clipboard_history",
         "media",
         "weather",
         "microphone",
@@ -309,3 +310,9 @@ widgets:
       callbacks:
         on_left: "toggle_menu"
         on_right: "toggle_label"
+  clipboard_history:
+    type: "yasb.clipboard_history.ClipboardHistoryWidget"
+    options:
+      max_items: 50
+      persist: false
+      tooltip: true
