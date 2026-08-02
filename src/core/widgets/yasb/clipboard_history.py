@@ -5,8 +5,10 @@ import re
 import time
 from typing import Any
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QBuffer, QIODevice, QMimeData, Qt
+from PyQt6.QtGui import QDrag, QPixmap
 from PyQt6.QtWidgets import (
+    QApplication,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -46,7 +48,9 @@ def _friendly_time(ts: float) -> str:
 class ClipboardHistoryWidget(BaseWidget):
     """Bar segment showing a running count of everything copied to the clipboard
     (system-wide, not just from YASB). Click to expand a popup listing the
-    history; click an entry to copy it again, or delete/clear individual items."""
+    history; click an entry to copy it again (or drag it out to paste directly
+    into another window), or delete/clear individual items. Image entries show
+    a thumbnail preview."""
 
     validation_schema = ClipboardHistoryConfig
 
@@ -201,7 +205,10 @@ class ClipboardHistoryWidget(BaseWidget):
         row.setProperty("class", f"entry {entry['kind']}")
         row_layout = QHBoxLayout(row)
         row_layout.setContentsMargins(0, 0, 0, 0)
-        row_layout.setSpacing(0)
+        row_layout.setSpacing(8)
+
+        if entry["kind"] == "image":
+            row_layout.addWidget(self._build_thumbnail(entry), alignment=Qt.AlignmentFlag.AlignTop)
 
         text_container = QWidget()
         text_container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
@@ -209,12 +216,14 @@ class ClipboardHistoryWidget(BaseWidget):
         text_layout.setContentsMargins(0, 0, 0, 0)
         text_layout.setSpacing(0)
 
-        preview = " ".join(entry["text"].strip().splitlines())
-        max_chars = self.config.max_preview_chars
-        if len(preview) > max_chars:
-            preview = preview[: max_chars - 1] + "..."
-
-        preview_label = QLabel(preview if preview else "[Image]")
+        if entry["kind"] == "image":
+            preview_label = QLabel(entry["text"])  # "[Image WxH]"
+        else:
+            preview = " ".join(entry["text"].strip().splitlines())
+            max_chars = self.config.max_preview_chars
+            if len(preview) > max_chars:
+                preview = preview[: max_chars - 1] + "..."
+            preview_label = QLabel(preview)
         preview_label.setProperty("class", "preview")
         preview_label.setWordWrap(True)
         text_layout.addWidget(preview_label)
@@ -231,6 +240,19 @@ class ClipboardHistoryWidget(BaseWidget):
         row_layout.addWidget(delete_btn, alignment=Qt.AlignmentFlag.AlignTop)
 
         return row
+
+    def _build_thumbnail(self, entry: dict[str, Any]) -> QLabel:
+        thumb = QLabel()
+        thumb.setProperty("class", "thumbnail")
+        thumb.setFixedSize(48, 48)
+        thumb.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        image = self._service.get_image(entry["id"])
+        if image is not None:
+            pixmap = QPixmap.fromImage(image).scaled(
+                48, 48, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation
+            )
+            thumb.setPixmap(pixmap)
+        return thumb
 
     def _copy_and_close(self, entry_id: str) -> None:
         self._service.copy_entry(entry_id)
@@ -259,15 +281,65 @@ class ClipboardHistoryWidget(BaseWidget):
 
 
 class ClipboardEntryFrame(QFrame):
-    """A single clickable clipboard-history row. Clicking anywhere but the
-    delete button re-copies the entry and closes the popup, mirroring the
-    native Win+V clipboard history UX."""
+    """A single clipboard-history row.
+
+    A plain click (no movement) re-copies the entry and closes the popup,
+    mirroring the native Win+V clipboard history UX. Pressing and dragging
+    past the OS drag threshold instead starts a real drag-and-drop operation,
+    so the entry (text or image) can be dropped straight into another window
+    without going through the clipboard at all.
+    """
 
     def __init__(self, owner: ClipboardHistoryWidget, entry: dict[str, Any]):
         super().__init__()
         self._owner = owner
         self._entry = entry
+        self._drag_start_position = None
+        self._dragging = False
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.MouseButton.LeftButton and self._entry["kind"] == "text":
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._drag_start_position = event.pos()
+            self._dragging = False
+
+    def mouseMoveEvent(self, event):
+        if not (event.buttons() & Qt.MouseButton.LeftButton) or self._drag_start_position is None:
+            return
+        moved = (event.pos() - self._drag_start_position).manhattanLength()
+        if moved < QApplication.startDragDistance():
+            return
+        self._dragging = True
+        self._start_drag()
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton and not self._dragging:
             self._owner._copy_and_close(self._entry["id"])
+        self._drag_start_position = None
+        self._dragging = False
+
+    def _start_drag(self) -> None:
+        mime = QMimeData()
+        if self._entry["kind"] == "image":
+            image = self._owner._service.get_image(self._entry["id"])
+            if image is None:
+                return
+            mime.setImageData(image)
+            # Also attach raw PNG bytes under the standard mime type so drop
+            # targets that don't understand Qt's image variant (most non-Qt
+            # apps) can still accept the drop.
+            buffer = QBuffer()
+            buffer.open(QIODevice.OpenModeFlag.WriteOnly)
+            image.save(buffer, "PNG")
+            mime.setData("image/png", buffer.data())
+            pixmap = QPixmap.fromImage(image).scaled(
+                64, 64, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation
+            )
+        else:
+            mime.setText(self._entry["text"])
+            pixmap = None
+
+        drag = QDrag(self)
+        drag.setMimeData(mime)
+        if pixmap is not None:
+            drag.setPixmap(pixmap)
+        drag.exec(Qt.DropAction.CopyAction)

@@ -620,8 +620,13 @@ QToolTip {
 .clipboard-history-menu .entry {
     padding: 8px 14px;
 }
-.clipboard-history-menu .entry.text:hover {
+.clipboard-history-menu .entry:hover {
     background-color: var(--surface0);
+}
+.clipboard-history-menu .thumbnail {
+    background-color: var(--surface0);
+    border: 1px solid var(--surface1);
+    border-radius: 4px;
 }
 .clipboard-history-menu .preview {
     font-size: 12px;
