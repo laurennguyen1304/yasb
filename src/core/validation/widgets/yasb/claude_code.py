@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import Field
 
 from core.validation.widgets.base_model import (
@@ -11,7 +13,7 @@ from core.validation.widgets.base_model import (
 
 class ClaudeCodeCallbacksConfig(CallbacksConfig):
     on_left: str = "toggle_label"
-    on_right: str = "do_nothing"
+    on_right: str = "show_sessions"
 
 
 class ClaudeCodeIconsConfig(CustomBaseModel):
@@ -44,6 +46,34 @@ class ClaudeCodeMascotConfig(CustomBaseModel):
     gap: int = Field(default=6, ge=0, le=32)
 
 
+class ClaudeCodeSessionsMenuConfig(CustomBaseModel):
+    blur: bool = True
+    round_corners: bool = True
+    round_corners_type: Literal["normal", "small"] = "normal"
+    border_color: str = "System"
+    alignment: str = "right"
+    direction: str = "down"
+    offset_top: int = 6
+    offset_left: int = 0
+
+
+class ClaudeCodeSessionsConfig(CustomBaseModel):
+    """Popup listing every concurrently-open Claude Code session, not just
+    whichever one wrote state.json last -- read from the per-session records
+    the hooks maintain under state_file's sibling sessions.d/ directory.
+    Mirrors the sessions popover in the sibling macOS app
+    (juzser/claude-status-bar-macos).
+    """
+
+    enabled: bool = True
+    # A session untouched longer than this is hidden from the popup (almost
+    # certainly a crashed process that never fired its Stop/End hook).
+    stale_after: int = Field(default=900, ge=0)
+    # A session untouched longer than this has its record file deleted outright.
+    prune_after: int = Field(default=7 * 24 * 3600, ge=0)
+    menu: ClaudeCodeSessionsMenuConfig = ClaudeCodeSessionsMenuConfig()
+
+
 class ClaudeCodeConfig(CustomBaseModel):
     label: str = "<span>{icon}</span> {status}"
     label_alt: str = "<span>{icon}</span> {status} {elapsed}"
@@ -64,5 +94,6 @@ class ClaudeCodeConfig(CustomBaseModel):
     tooltip: bool = True
     icons: ClaudeCodeIconsConfig = ClaudeCodeIconsConfig()
     mascot: ClaudeCodeMascotConfig = ClaudeCodeMascotConfig()
+    sessions: ClaudeCodeSessionsConfig = ClaudeCodeSessionsConfig()
     callbacks: ClaudeCodeCallbacksConfig = ClaudeCodeCallbacksConfig()
     keybindings: list[KeybindingConfig] = []

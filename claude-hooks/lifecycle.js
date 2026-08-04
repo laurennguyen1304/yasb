@@ -6,14 +6,18 @@
  *
  * Claude Code invokes this script at each lifecycle event and passes the hook
  * payload as JSON on stdin. We translate events into a tiny state machine and
- * write ~/.claude/statusbar/state.json, which the tray app polls. Active
- * sessions are tracked as files under sessions.d/ so the tray app knows when to
- * self-quit.
+ * write ~/.claude/statusbar/state.json, which the tray app polls. Each event
+ * also updates a full per-session record under sessions.d/<id>.json (state,
+ * label, cwd, startedAt, busySince, updatedAt) — this is what lets the bar
+ * show *every* concurrently-open session, not just whichever one wrote last,
+ * mirroring the SessionRecord/SessionReducer pair in the sibling macOS app
+ * (juzser/claude-status-bar-macos).
  *
  * Usage:  node lifecycle.js <event>
  *   event ∈ start | end | prompt | pre | post | notify | permreq | stop
  *
- * Must stay in sync with the C# reader (AppPaths.cs / StatusState.cs).
+ * Must stay in sync with the C# reader (AppPaths.cs / StatusState.cs) and the
+ * Python reader (core/widgets/yasb/claude_code.py's SessionAggregator).
  */
 
 const fs = require('fs');
@@ -85,14 +89,14 @@ function sweepTmp() {
   } catch {}
 }
 
-// Atomic write: temp file + rename, so the poller never sees a half-written
+// Atomic write: temp file + rename, so a reader never sees a half-written
 // file. On Windows the rename can transiently fail with EPERM/EACCES/EBUSY when
 // a reader (the status bar, antivirus) has the target open; retry briefly, then
 // fall back to a direct overwrite so the displayed state never goes stale.
-function writeState(obj) {
-  ensureDirs();
+// Shared by state.json and every sessions.d/<id>.json write.
+function atomicWriteJSON(filePath, obj) {
   const data = JSON.stringify(obj);
-  const tmp = STATE_FILE + '.' + process.pid + '.tmp';
+  const tmp = filePath + '.' + process.pid + '.tmp';
   try {
     fs.writeFileSync(tmp, data);
   } catch {
@@ -101,7 +105,7 @@ function writeState(obj) {
   const transient = new Set(['EPERM', 'EACCES', 'EBUSY']);
   for (let attempt = 0; attempt < 10; attempt++) {
     try {
-      fs.renameSync(tmp, STATE_FILE);
+      fs.renameSync(tmp, filePath);
       return;
     } catch (err) {
       if (!transient.has(err.code) || attempt === 9) break;
@@ -109,8 +113,13 @@ function writeState(obj) {
     }
   }
   // Rename kept failing: write directly and drop the temp file.
-  try { fs.writeFileSync(STATE_FILE, data); } catch {}
+  try { fs.writeFileSync(filePath, data); } catch {}
   try { fs.unlinkSync(tmp); } catch {}
+}
+
+function writeState(obj) {
+  ensureDirs();
+  atomicWriteJSON(STATE_FILE, obj);
 }
 
 function readState() {
@@ -130,6 +139,89 @@ function setState(sessionId, state, label, startedAt) {
     startedAt: startedAt != null ? startedAt : (prev.startedAt || 0),
     ts: nowSec(),
   });
+}
+
+// tool_name -> friendly present-tense verb, mirroring the macOS app's
+// ToolLabels.label(for:) so a session row reads "Editing"/"Running"/etc.
+// instead of the raw tool name.
+const TOOL_LABELS = {
+  Edit: 'Editing', Write: 'Editing', MultiEdit: 'Editing', NotebookEdit: 'Editing',
+  Bash: 'Running',
+  Read: 'Reading',
+  Grep: 'Searching', Glob: 'Searching',
+  WebFetch: 'Browsing', WebSearch: 'Browsing',
+  Task: 'Delegating', Agent: 'Delegating',
+};
+function toolLabel(name) {
+  if (TOOL_LABELS[name]) return TOOL_LABELS[name];
+  if (!name) return 'Working';
+  return name[0].toUpperCase() + name.slice(1);
+}
+
+// --- Per-session records (sessions.d/<id>.json) ---------------------------
+// One JSON record per concurrently-open session, so the bar can show *every*
+// active session, not just whichever one's hook fired last. Mirrors the
+// macOS app's SessionRecord/SessionReducer pair.
+
+function readSessionRecord(id) {
+  try {
+    return JSON.parse(fs.readFileSync(sessionFile(id), 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+function writeSessionRecord(record) {
+  ensureDirs();
+  atomicWriteJSON(sessionFile(record.sessionId), record);
+}
+
+// Applies one hook event to a session's current record (or creates one),
+// returning the next record. `nowMs` is Date.now() (ms), matching the
+// Python/JS convention elsewhere in this file of storing epoch seconds for
+// display math but keeping this reducer's own now-instant consistent.
+function reduceSession(current, eventName, input, sessionId, nowSec_) {
+  const cwd = input.cwd || (current && current.cwd) || '';
+  const record = current
+    ? { ...current, cwd, updatedAt: nowSec_ }
+    : { sessionId, state: 'idle', label: null, cwd, startedAt: nowSec_, busySince: null, updatedAt: nowSec_ };
+
+  switch (eventName) {
+    case 'start':
+      record.state = 'idle';
+      record.label = null;
+      record.busySince = null;
+      record.startedAt = nowSec_;
+      break;
+    case 'prompt':
+      record.state = 'thinking';
+      record.label = null;
+      record.busySince = record.busySince || nowSec_;
+      break;
+    case 'pre':
+      record.state = 'tool';
+      record.label = toolLabel(input.tool_name || input.toolName);
+      record.busySince = record.busySince || nowSec_;
+      break;
+    case 'post':
+      record.state = 'thinking';
+      record.label = null;
+      break;
+    case 'notify':
+    case 'permreq':
+      // Named 'permission' (not the macOS app's 'waiting') to match the
+      // existing state.json/mascot vocabulary already used across this repo.
+      record.state = 'permission';
+      break;
+    case 'stop':
+      record.state = 'idle';
+      record.label = null;
+      record.busySince = null;
+      break;
+    default:
+      return current; // unrecognized event: leave any existing record untouched
+  }
+  return record;
 }
 
 function isAppRunning() {
@@ -174,10 +266,30 @@ function clearSessions() {
   } catch {}
 }
 
+// Event name -> reduceSession's event key. 'end' has no reducer case (the
+// record is deleted instead) so it's intentionally absent.
+const REDUCER_EVENT = {
+  start: 'start', prompt: 'prompt', pre: 'pre', post: 'post',
+  notify: 'notify', permreq: 'permreq', stop: 'stop',
+};
+
+// Applies one hook event to sessionId's on-disk record: read current (if
+// any), reduce, write back. No-op if there's no sessionId to key on, or the
+// event has no reducer mapping (e.g. 'end', which deletes the file instead).
+function updateSessionRecord(event, input, sessionId, nowSec_) {
+  if (!sessionId) return;
+  const reducerEvent = REDUCER_EVENT[event];
+  if (!reducerEvent) return;
+  const current = readSessionRecord(sessionId);
+  const next = reduceSession(current, reducerEvent, input, sessionId, nowSec_);
+  if (next) writeSessionRecord(next);
+}
+
 function main() {
   const event = (process.argv[2] || '').toLowerCase();
   const input = readStdin();
   const sessionId = input.session_id || input.sessionId || null;
+  const now = nowSec();
 
   switch (event) {
     case 'start': {
@@ -186,9 +298,7 @@ function main() {
       // If the app isn't running, any leftover session files are stale (e.g.
       // after a crash); clear them so the app doesn't think work is ongoing.
       if (!isAppRunning()) clearSessions();
-      if (sessionId) {
-        try { fs.writeFileSync(sessionFile(sessionId), ''); } catch {}
-      }
+      updateSessionRecord(event, input, sessionId, now);
       setState(sessionId, 'idle', '', 0);
       launchApp();
       break;
@@ -196,19 +306,22 @@ function main() {
 
     case 'prompt': {
       // A new turn begins: start the timer and show the thinking animation.
-      setState(sessionId, 'thinking', '', nowSec());
+      updateSessionRecord(event, input, sessionId, now);
+      setState(sessionId, 'thinking', '', now);
       break;
     }
 
     case 'pre': {
       // A tool is about to run; surface its name.
       const tool = input.tool_name || input.toolName || 'tool';
+      updateSessionRecord(event, input, sessionId, now);
       setState(sessionId, 'tool', tool, undefined);
       break;
     }
 
     case 'post': {
       // Tool finished; back to thinking until the turn stops.
+      updateSessionRecord(event, input, sessionId, now);
       setState(sessionId, 'thinking', '', undefined);
       break;
     }
@@ -216,12 +329,14 @@ function main() {
     case 'permreq':
     case 'notify': {
       // Waiting on the user (permission prompt / idle notification).
+      updateSessionRecord(event, input, sessionId, now);
       setState(sessionId, 'permission', '', undefined);
       break;
     }
 
     case 'stop': {
       // Turn complete: back to idle and clear the timer.
+      updateSessionRecord(event, input, sessionId, now);
       setState(sessionId, 'idle', '', 0);
       break;
     }

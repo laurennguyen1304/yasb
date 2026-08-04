@@ -21,10 +21,10 @@ from typing import Any
 
 from PyQt6.QtCore import QFileSystemWatcher, QPointF, QSize, Qt, QTimer
 from PyQt6.QtGui import QBrush, QColor, QMovie, QPainter
-from PyQt6.QtWidgets import QWidget
+from PyQt6.QtWidgets import QFrame, QHBoxLayout, QLabel, QScrollArea, QVBoxLayout, QWidget
 
 from core.utils.tooltip import set_tooltip
-from core.utils.utilities import refresh_widget_style
+from core.utils.utilities import PopupWidget, refresh_widget_style
 from core.validation.widgets.yasb.claude_code import ClaudeCodeConfig
 from core.widgets.base import BaseWidget
 from settings import SCRIPT_PATH
@@ -102,6 +102,84 @@ def _as_int(value: Any) -> int:
         return 0
 
 
+_SESSIONS_SUBDIR = "sessions.d"
+_SESSION_STATE_TEXT = {"idle": "Idle", "thinking": "Thinking", "tool": "Working", "permission": "Waiting"}
+
+
+def resolve_sessions_dir(state_path: str) -> str:
+    """The sessions.d/ directory the hooks write per-session records into,
+    always a sibling of state.json."""
+    return os.path.join(os.path.dirname(state_path), _SESSIONS_SUBDIR)
+
+
+def _iter_session_files(sessions_dir: str) -> list[tuple[str, dict[str, Any]]]:
+    """(path, record) for every parsable session file. Anything that fails to
+    parse -- a leftover empty marker from before this format existed, or a
+    write caught mid-flight -- is silently skipped rather than shown broken."""
+    try:
+        names = os.listdir(sessions_dir)
+    except OSError:
+        return []
+    out = []
+    for name in names:
+        if name.endswith(".tmp"):
+            continue
+        path = os.path.join(sessions_dir, name)
+        record = read_state(path)
+        if record and record.get("sessionId"):
+            out.append((path, record))
+    return out
+
+
+def resolve_sessions(
+    sessions_dir: str, stale_after: int, prune_after: int, now: int | None = None
+) -> list[dict[str, Any]]:
+    """Live, non-stale session records, oldest first. Mirrors the macOS app's
+    SessionAggregator: stale_after hides a record from the UI, prune_after
+    deletes its file outright (almost certainly a crashed session that never
+    fired Stop/End)."""
+    now = int(time.time()) if now is None else now
+    live = []
+    for path, record in _iter_session_files(sessions_dir):
+        updated_at = _as_int(record.get("updatedAt")) or _as_int(record.get("startedAt"))
+        age = now - updated_at if updated_at else 0
+        if prune_after and updated_at and age > prune_after:
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+            continue
+        if stale_after and updated_at and age > stale_after:
+            continue
+        live.append(record)
+    live.sort(key=lambda r: _as_int(r.get("startedAt")))
+    return live
+
+
+def session_view(record: dict[str, Any], now: int | None = None) -> dict[str, str]:
+    """Turn a raw session record into popup-row display values. Pure
+    function -- no Qt, easy to unit-test -- mirroring resolve_view above."""
+    now = int(time.time()) if now is None else now
+    phase = _STATES.get(str(record.get("state", "")).lower(), "idle")
+    label = str(record.get("label") or "").strip()
+    status = label if (phase == "tool" and label) else _SESSION_STATE_TEXT.get(phase, "Idle")
+
+    cwd = str(record.get("cwd") or "").strip()
+    project = os.path.basename(cwd.rstrip("/\\")) or cwd or "session"
+
+    anchor = _as_int(record.get("busySince")) or _as_int(record.get("startedAt"))
+    elapsed = format_elapsed(now - anchor) if phase in ("thinking", "tool") and anchor > 0 else ""
+
+    return {
+        "sessionId": str(record.get("sessionId") or ""),
+        "state": phase,
+        "status": status,
+        "project": project,
+        "cwd": cwd,
+        "elapsed": elapsed,
+    }
+
+
 _MASCOT_GIF_PATH = os.path.join(SCRIPT_PATH, "assets", "images", "claude_mascot.gif")
 
 
@@ -170,6 +248,8 @@ class ClaudeCodeWidget(BaseWidget):
         self._show_alt_label = False
         self._state_path = resolve_state_path(config.state_file)
         self._data: dict[str, Any] = read_state(self._state_path)
+        self._sessions_dir = resolve_sessions_dir(self._state_path)
+        self._menu: PopupWidget | None = None
 
         self._init_container()
 
@@ -191,6 +271,7 @@ class ClaudeCodeWidget(BaseWidget):
         self.build_widget_label(self.config.label, self.config.label_alt)
 
         self.register_callback("toggle_label", self._toggle_label)
+        self.register_callback("show_sessions", self._toggle_sessions_menu)
         self.register_callback("update", self._render)
 
         self.callback_left = self.config.callbacks.on_left
@@ -207,6 +288,7 @@ class ClaudeCodeWidget(BaseWidget):
         # Timer only advances the elapsed counter; state itself arrives via watch.
         self.timer = QTimer(self)
         self.timer.timeout.connect(self._render)
+        self.timer.timeout.connect(self._refresh_sessions_menu)
         self.timer.start(self.config.update_interval)
 
         self._render()
@@ -214,7 +296,10 @@ class ClaudeCodeWidget(BaseWidget):
     def _ensure_watch(self) -> None:
         directory = os.path.dirname(self._state_path)
         watched = set(self._watcher.files()) | set(self._watcher.directories())
-        for path in (directory, self._state_path):
+        paths = [directory, self._state_path]
+        if self.config.sessions.enabled:
+            paths.append(self._sessions_dir)
+        for path in paths:
             if path and os.path.exists(path) and path not in watched:
                 self._watcher.addPath(path)
 
@@ -222,6 +307,7 @@ class ClaudeCodeWidget(BaseWidget):
         self._data = read_state(self._state_path)
         self._ensure_watch()  # re-arm the file watch after an atomic replace
         self._render()
+        self._refresh_sessions_menu()
 
     def _toggle_label(self) -> None:
         self._show_alt_label = not self._show_alt_label
@@ -274,3 +360,137 @@ class ClaudeCodeWidget(BaseWidget):
                 set_tooltip(widget, tip)
 
         refresh_widget_style(*active_widgets)
+
+    def _on_menu_destroyed(self, *_args) -> None:
+        self._menu = None
+
+    def _toggle_sessions_menu(self) -> None:
+        self._show_sessions_menu()
+
+    def _show_sessions_menu(self) -> None:
+        if not self.config.sessions.enabled:
+            return
+        self._menu = PopupWidget(
+            self,
+            self.config.sessions.menu.blur,
+            self.config.sessions.menu.round_corners,
+            self.config.sessions.menu.round_corners_type,
+            self.config.sessions.menu.border_color,
+        )
+        # See ClipboardHistoryWidget for why this null-out matters: hide()
+        # schedules deleteLater() and the popup can also close itself via a
+        # path we don't control (click outside, Escape, re-toggling).
+        self._menu.destroyed.connect(self._on_menu_destroyed)
+        self._menu.setProperty("class", "claude-code-menu")
+
+        main_layout = QVBoxLayout(self._menu)
+        main_layout.setSpacing(0)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+
+        header = QLabel("Claude Code Sessions")
+        header.setProperty("class", "header")
+        main_layout.addWidget(header)
+
+        scroll_area = QScrollArea()
+        scroll_area.setProperty("class", "scroll-area")
+        scroll_area.setStyleSheet("""
+            QScrollArea { background: transparent; border: none; }
+            QScrollBar:vertical { border: none; background: transparent; width: 4px; }
+            QScrollBar::handle:vertical { background: rgba(120, 120, 120, 0.35); min-height: 20px; border-radius: 2px; }
+            QScrollBar::handle:vertical:hover { background: rgba(120, 120, 120, 0.55); }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0px; }
+            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: transparent; }
+        """)
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+
+        scroll_widget = QWidget()
+        scroll_layout = QVBoxLayout(scroll_widget)
+        scroll_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        scroll_layout.setContentsMargins(0, 0, 0, 0)
+        scroll_layout.setSpacing(0)
+
+        self._populate_sessions(scroll_layout)
+
+        scroll_area.setWidget(scroll_widget)
+        main_layout.addWidget(scroll_area)
+
+        self._menu.adjustSize()
+        self._menu.setPosition(
+            alignment=self.config.sessions.menu.alignment,
+            direction=self.config.sessions.menu.direction,
+            offset_left=self.config.sessions.menu.offset_left,
+            offset_top=self.config.sessions.menu.offset_top,
+        )
+        self._menu.show()
+
+    def _populate_sessions(self, layout: QVBoxLayout) -> None:
+        sessions = resolve_sessions(
+            self._sessions_dir, self.config.sessions.stale_after, self.config.sessions.prune_after
+        )
+        if not sessions:
+            empty = QLabel("No active sessions.")
+            empty.setProperty("class", "empty")
+            empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            layout.addWidget(empty)
+            return
+        for record in sessions:
+            layout.addWidget(self._build_session_row(record))
+
+    def _build_session_row(self, record: dict[str, Any]) -> QFrame:
+        view = session_view(record)
+        row = QFrame()
+        row.setProperty("class", "session-row")
+        row_layout = QHBoxLayout(row)
+        row_layout.setContentsMargins(0, 0, 0, 0)
+        row_layout.setSpacing(8)
+
+        icon = QLabel(getattr(self.config.icons, view["state"], "●"))
+        icon.setProperty("class", f"row-icon {view['state']}")
+        row_layout.addWidget(icon, alignment=Qt.AlignmentFlag.AlignTop)
+
+        text_container = QWidget()
+        text_layout = QVBoxLayout(text_container)
+        text_layout.setContentsMargins(0, 0, 0, 0)
+        text_layout.setSpacing(0)
+
+        title = QLabel(view["project"])
+        title.setProperty("class", "row-title")
+        set_tooltip(title, view["cwd"] or view["project"])
+        text_layout.addWidget(title)
+
+        status_text = view["status"]
+        if view["elapsed"]:
+            status_text += f" · {view['elapsed']}"
+        status = QLabel(status_text)
+        status.setProperty("class", f"row-status {view['state']}")
+        text_layout.addWidget(status)
+
+        row_layout.addWidget(text_container)
+        return row
+
+    def _refresh_sessions_menu(self) -> None:
+        if not self._menu:
+            return
+        try:
+            if not self._menu.isVisible():
+                return
+        except RuntimeError:
+            # Underlying popup was already destroyed via a path that hasn't
+            # fired the destroyed-signal cleanup yet; treat as "no popup".
+            self._menu = None
+            return
+        scroll_areas = self._menu.findChildren(QScrollArea)
+        if not scroll_areas:
+            return
+        scroll_widget = scroll_areas[0].widget()
+        if not scroll_widget:
+            return
+        layout = scroll_widget.layout()
+        while layout.count():
+            item = layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.setParent(None)
+        self._populate_sessions(layout)
