@@ -93,6 +93,27 @@ class ClipboardHistoryService(QObject):
         self._images[entry_id] = image
         return image
 
+    def get_image_file_path(self, entry_id: str) -> str | None:
+        """Return a PNG file on disk for this image entry, writing one now if
+        needed. Many real-world drag-and-drop targets (Explorer, chat/mail
+        apps, browser upload dropzones) only accept a file reference, not
+        inline image bytes, so this is used to back a drag's file-list mime
+        data regardless of whether ``persist`` is enabled."""
+        entry = next((e for e in self._entries if e["id"] == entry_id), None)
+        if entry is None:
+            return None
+        path = entry.get("image_path")
+        if path and Path(path).is_file():
+            return path
+        image = self.get_image(entry_id)
+        if image is None:
+            return None
+        new_path = _image_cache_dir() / f"{entry_id}.png"
+        if not image.save(str(new_path), "PNG"):
+            return None
+        entry["image_path"] = str(new_path)
+        return str(new_path)
+
     def _on_clipboard_changed(self) -> None:
         if self._suppress_next:
             self._suppress_next = False

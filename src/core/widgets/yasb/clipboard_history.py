@@ -5,7 +5,7 @@ import re
 import time
 from typing import Any
 
-from PyQt6.QtCore import QBuffer, QIODevice, QMimeData, Qt
+from PyQt6.QtCore import QBuffer, QIODevice, QMimeData, Qt, QUrl
 from PyQt6.QtGui import QDrag, QPixmap
 from PyQt6.QtWidgets import (
     QApplication,
@@ -24,6 +24,14 @@ from core.utils.utilities import PopupWidget, refresh_widget_style
 from core.validation.widgets.yasb.clipboard_history import ClipboardHistoryConfig
 from core.widgets.base import BaseWidget
 from core.widgets.services.clipboard_history.service import ClipboardHistoryService
+
+
+# Qt's own startDragDistance() (~10px) is easy to exceed with an ordinary,
+# no-drag-intended mouse click -- a bit of hand tremor between press and
+# release is normal and would otherwise silently turn a click into an
+# accidental (and usually invalid) drag. Require a much more deliberate
+# movement before treating it as a real drag.
+_DRAG_THRESHOLD = 20
 
 
 def _friendly_time(ts: float) -> str:
@@ -306,7 +314,7 @@ class ClipboardEntryFrame(QFrame):
         if not (event.buttons() & Qt.MouseButton.LeftButton) or self._drag_start_position is None:
             return
         moved = (event.pos() - self._drag_start_position).manhattanLength()
-        if moved < QApplication.startDragDistance():
+        if moved < _DRAG_THRESHOLD:
             return
         self._dragging = True
         self._start_drag()
@@ -324,13 +332,17 @@ class ClipboardEntryFrame(QFrame):
             if image is None:
                 return
             mime.setImageData(image)
-            # Also attach raw PNG bytes under the standard mime type so drop
-            # targets that don't understand Qt's image variant (most non-Qt
-            # apps) can still accept the drop.
+            # Also attach raw PNG bytes under the standard mime type, and a
+            # real file reference (most drop targets people actually use --
+            # Explorer, chat/mail apps, browser upload dropzones -- only
+            # accept a file, not inline image bytes or Qt's own variant).
             buffer = QBuffer()
             buffer.open(QIODevice.OpenModeFlag.WriteOnly)
             image.save(buffer, "PNG")
             mime.setData("image/png", buffer.data())
+            file_path = self._owner._service.get_image_file_path(self._entry["id"])
+            if file_path:
+                mime.setUrls([QUrl.fromLocalFile(file_path)])
             pixmap = QPixmap.fromImage(image).scaled(
                 64, 64, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation
             )
@@ -342,4 +354,18 @@ class ClipboardEntryFrame(QFrame):
         drag.setMimeData(mime)
         if pixmap is not None:
             drag.setPixmap(pixmap)
-        drag.exec(Qt.DropAction.CopyAction)
+
+        # The drag's native event loop runs while this popup is still open;
+        # make sure our own "click outside closes the popup" behavior doesn't
+        # tear the popup (and this row) down mid-drag.
+        menu = self._owner._menu
+        if menu is not None:
+            menu.set_auto_close_enabled(False)
+        try:
+            drag.exec(Qt.DropAction.CopyAction)
+        finally:
+            if menu is not None:
+                try:
+                    menu.set_auto_close_enabled(True)
+                except RuntimeError:
+                    pass  # popup was destroyed during the drag; nothing to re-enable
