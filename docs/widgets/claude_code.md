@@ -54,21 +54,19 @@ stylesheet example below.
 
 ### `mascot` — the animated Claude face
 
-A small pixel-art Claude mascot (rounded coral face, two block eyes, a row of
-pale "teeth" along the bottom edge), drawn at runtime with QPainter — no image
-assets — and placed to the left of the bullet + status text. It's purely
-additive; the bullet glyph and text are unaffected. It bobs gently while
-thinking or running a tool, sits still at rest, and dims with a yellow dot
-badge while waiting on a permission prompt. The bob timer only runs while
-actually animating, so it's free in the background.
+The actual Claude mascot GIF, bundled verbatim at
+[`src/assets/images/claude_mascot.gif`](../../src/assets/images/claude_mascot.gif)
+(a squash-and-stretch bounce, 10 frames at 70ms each) and played with QMovie
+— not redrawn — to the left of the bullet + status text. It's purely
+additive; the bullet glyph and text are unaffected. It plays while thinking
+or running a tool, holds on its resting frame otherwise, and dims with a
+yellow dot badge while waiting on a permission prompt. QMovie only
+decodes/advances frames while running, so it's free in the background.
 
 | Option                 | Type | Default     | Description |
 |-------------------------|------|-------------|--------------|
 | `enabled`               | bool | `true`      | Show the mascot. |
-| `size`                  | int  | `16`        | Diameter in pixels. |
-| `color`                 | str  | `#E8825A`   | Face colour (Claude coral). |
-| `eye_color`             | str  | `#1E1E1E`   | Eye colour. |
-| `mouth_color`           | str  | `#FBEFE3`   | "Teeth" colour along the bottom edge. |
+| `size`                  | int  | `16`        | Diameter in pixels the GIF is scaled to. |
 | `permission_dot_color`  | str  | `#F2B82E`   | Dot colour shown over the dimmed face while waiting on you. |
 | `gap`                   | int  | `6`         | Space (px) between the mascot and the bullet + text that follows it. |
 

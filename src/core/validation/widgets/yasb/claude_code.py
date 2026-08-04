@@ -28,18 +28,16 @@ class ClaudeCodeIconsConfig(CustomBaseModel):
 
 
 class ClaudeCodeMascotConfig(CustomBaseModel):
-    """The small pixel-art Claude mascot (rounded coral face, two block eyes,
-    a row of pale "teeth" along the bottom) shown to the left of the bullet +
-    status text (the bullet/text themselves are unaffected -- this is an
-    addition, not a replacement). Bobs gently while thinking or running a
-    tool; sits still at rest; dims with a permission dot while waiting on you.
+    """The Claude mascot GIF (assets/images/claude_mascot.gif -- a
+    squash-and-stretch bounce, 10 frames at 70ms each) shown to the left of
+    the bullet + status text (the bullet/text themselves are unaffected --
+    this is an addition, not a replacement). Plays while thinking or running
+    a tool; held on its resting frame otherwise; dims with a permission dot
+    while waiting on you.
     """
 
     enabled: bool = True
     size: int = Field(default=16, ge=8, le=48)
-    color: str = "#E8825A"  # Claude coral
-    eye_color: str = "#1E1E1E"
-    mouth_color: str = "#FBEFE3"
     permission_dot_color: str = "#F2B82E"
     # Gap between the mascot and the bullet+text that follows it. The
     # container layout's own spacing is 0, so without this they touch.

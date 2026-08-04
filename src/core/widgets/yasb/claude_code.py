@@ -14,20 +14,20 @@ consumes the exact same state-file contract.
 from __future__ import annotations
 
 import json
-import math
 import os
 import re
 import time
 from typing import Any
 
-from PyQt6.QtCore import QFileSystemWatcher, QPointF, QRectF, Qt, QTimer
-from PyQt6.QtGui import QBrush, QColor, QPainter, QPainterPath
+from PyQt6.QtCore import QFileSystemWatcher, QPointF, QSize, Qt, QTimer
+from PyQt6.QtGui import QBrush, QColor, QMovie, QPainter
 from PyQt6.QtWidgets import QWidget
 
 from core.utils.tooltip import set_tooltip
 from core.utils.utilities import refresh_widget_style
 from core.validation.widgets.yasb.claude_code import ClaudeCodeConfig
 from core.widgets.base import BaseWidget
+from settings import SCRIPT_PATH
 
 # state string -> css state class. Unknown/missing states fall back to idle.
 _STATES = {"idle": "idle", "thinking": "thinking", "tool": "tool", "permission": "permission"}
@@ -102,65 +102,55 @@ def _as_int(value: Any) -> int:
         return 0
 
 
-_MASCOT_BOB_MS = 50  # smooth continuous motion, not discrete frames
-_MASCOT_BOB_AMPLITUDE = 0.09  # fraction of icon size
+_MASCOT_GIF_PATH = os.path.join(SCRIPT_PATH, "assets", "images", "claude_mascot.gif")
 
 
 class ClaudeMascotIcon(QWidget):
-    """Small pixel-art Claude mascot (rounded coral face, two block eyes, a
-    row of pale "teeth" along the bottom edge), drawn at runtime with
-    QPainter -- no image assets. Bobs gently while thinking or running a
-    tool; sits still at rest; dims with a permission dot while waiting on
+    """The actual Claude mascot GIF (squash-and-stretch bounce, 10 frames at
+    70ms each -- bundled verbatim as assets/images/claude_mascot.gif, not
+    redrawn), played via QMovie while thinking or running a tool; held on its
+    resting frame otherwise; dimmed with a permission dot while waiting on
     you.
 
-    The bob timer only runs while actually animating -- stopped the instant
-    the phase goes idle/permission -- so it costs nothing in the background.
+    QMovie only decodes/advances frames while running() -- stopped the
+    instant the phase goes idle/permission -- so it costs nothing in the
+    background.
     """
 
-    def __init__(self, size: int, color: str, eye_color: str, mouth_color: str, dot_color: str, parent: QWidget | None = None):
+    def __init__(self, size: int, dot_color: str, parent: QWidget | None = None):
         super().__init__(parent)
         self._size = size
-        self._color = QColor(color)
-        self._eye_color = QColor(eye_color)
-        self._mouth_color = QColor(mouth_color)
         self._dot_color = QColor(dot_color)
         self._phase = "idle"
-        self._t = 0.0
         self.setFixedSize(size, size)
 
-        self._timer = QTimer(self)
-        self._timer.setInterval(_MASCOT_BOB_MS)
-        self._timer.timeout.connect(self._tick)
+        self._movie = QMovie(_MASCOT_GIF_PATH)
+        self._movie.setScaledSize(QSize(size, size))
+        self._movie.setCacheMode(QMovie.CacheMode.CacheAll)
+        self._movie.frameChanged.connect(lambda _frame: self.update())
+        self._movie.jumpToFrame(0)
 
     def set_phase(self, phase: str) -> None:
+        if phase == self._phase:
+            return
+        self._phase = phase
         animate = phase in ("thinking", "tool")
-        if phase != self._phase:
-            self._phase = phase
-            if not animate:
-                self._t = 0.0
-        if animate and not self._timer.isActive():
-            self._timer.start()
-        elif not animate and self._timer.isActive():
-            self._timer.stop()
-        self.update()
-
-    def _tick(self) -> None:
-        self._t += _MASCOT_BOB_MS / 1000.0
+        running = self._movie.state() == QMovie.MovieState.Running
+        if animate and not running:
+            self._movie.start()
+        elif not animate and running:
+            self._movie.stop()
+            self._movie.jumpToFrame(0)
         self.update()
 
     def paintEvent(self, _event) -> None:
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        bob = 0.0
-        if self._phase in ("thinking", "tool"):
-            bob = math.sin(self._t * 2 * math.pi * 1.4) * (self._size * _MASCOT_BOB_AMPLITUDE)
-
-        painter.save()
-        painter.translate(0, bob)
-        alpha = 140 if self._phase == "permission" else 255
-        self._draw_face(painter, alpha)
-        painter.restore()
+        if self._phase == "permission":
+            painter.setOpacity(0.55)
+        painter.drawPixmap(0, 0, self._movie.currentPixmap())
+        painter.setOpacity(1.0)
 
         if self._phase == "permission":
             d = self._size * 0.34
@@ -169,44 +159,6 @@ class ClaudeMascotIcon(QWidget):
             painter.drawEllipse(QPointF(self._size * 0.78, self._size * 0.22), d / 2, d / 2)
 
         painter.end()
-
-    def _draw_face(self, painter: QPainter, alpha: int) -> None:
-        size = self._size
-        grid = size / 12.0
-
-        # Rounded coral body -- rounded top corners, square bottom corners
-        # (the pixel-art teeth read as sitting flush on a flat base).
-        radius = size * 0.22
-        path = QPainterPath()
-        path.moveTo(0, size)
-        path.lineTo(0, radius)
-        path.arcTo(QRectF(0, 0, radius * 2, radius * 2), 180, -90)
-        path.lineTo(size - radius, 0)
-        path.arcTo(QRectF(size - radius * 2, 0, radius * 2, radius * 2), 90, -90)
-        path.lineTo(size, size)
-        path.closeSubpath()
-
-        body_color = QColor(self._color)
-        body_color.setAlpha(alpha)
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QBrush(body_color))
-        painter.drawPath(path)
-
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing, False)
-
-        eye_color = QColor(self._eye_color)
-        eye_color.setAlpha(alpha)
-        painter.setBrush(QBrush(eye_color))
-        for col in (3, 7):
-            painter.drawRect(QRectF(col * grid, 4 * grid, 2 * grid, 2 * grid))
-
-        mouth_color = QColor(self._mouth_color)
-        mouth_color.setAlpha(alpha)
-        painter.setBrush(QBrush(mouth_color))
-        for col in (1, 4, 7, 10):
-            painter.drawRect(QRectF(col * grid, 10 * grid, grid, 2 * grid))
-
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
 
 class ClaudeCodeWidget(BaseWidget):
@@ -227,9 +179,6 @@ class ClaudeCodeWidget(BaseWidget):
         if self.config.mascot.enabled:
             self._mascot = ClaudeMascotIcon(
                 size=self.config.mascot.size,
-                color=self.config.mascot.color,
-                eye_color=self.config.mascot.eye_color,
-                mouth_color=self.config.mascot.mouth_color,
                 dot_color=self.config.mascot.permission_dot_color,
             )
             self._mascot.setProperty("class", "mascot")
