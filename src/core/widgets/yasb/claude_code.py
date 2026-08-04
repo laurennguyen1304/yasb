@@ -234,6 +234,10 @@ class ClaudeCodeWidget(BaseWidget):
             )
             self._mascot.setProperty("class", "mascot")
             self._widget_container_layout.addWidget(self._mascot)
+            # Container layout spacing is 0 (build_widget_label's other parts
+            # rely on that), so without an explicit gap the mascot and the
+            # bullet glyph render touching each other.
+            self._widget_container_layout.addSpacing(self.config.mascot.gap)
 
         self.build_widget_label(self.config.label, self.config.label_alt)
 

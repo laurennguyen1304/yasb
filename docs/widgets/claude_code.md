@@ -70,6 +70,7 @@ actually animating, so it's free in the background.
 | `eye_color`             | str  | `#1E1E1E`   | Eye colour. |
 | `mouth_color`           | str  | `#FBEFE3`   | "Teeth" colour along the bottom edge. |
 | `permission_dot_color`  | str  | `#F2B82E`   | Dot colour shown over the dimmed face while waiting on you. |
+| `gap`                   | int  | `6`         | Space (px) between the mascot and the bullet + text that follows it. |
 
 ## Example configuration
 

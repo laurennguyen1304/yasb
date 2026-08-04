@@ -41,6 +41,9 @@ class ClaudeCodeMascotConfig(CustomBaseModel):
     eye_color: str = "#1E1E1E"
     mouth_color: str = "#FBEFE3"
     permission_dot_color: str = "#F2B82E"
+    # Gap between the mascot and the bullet+text that follows it. The
+    # container layout's own spacing is 0, so without this they touch.
+    gap: int = Field(default=6, ge=0, le=32)
 
 
 class ClaudeCodeConfig(CustomBaseModel):
