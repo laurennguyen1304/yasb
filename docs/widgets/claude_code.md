@@ -27,6 +27,10 @@ State-file contract (written by the hooks, read by this widget):
   "label": "Edit", "startedAt": 1700000000, "ts": 1700000000 }
 ```
 
+Each event also updates a full per-session record under `sessions.d/<id>`
+(state, label, cwd, startedAt, busySince, updatedAt) — see
+[`sessions`](#sessions--the-sessions-popup) below.
+
 See [Setup](#setup) for wiring the hooks.
 
 ## Options
@@ -46,7 +50,8 @@ See [Setup](#setup) for wiring the hooks.
 | `tooltip`         | bool | `true`                         | Show a tooltip with status + elapsed. |
 | `icons`           | map  | `● ● ● ●`                       | Per-phase glyph: `idle`, `thinking`, `tool`, `permission`. |
 | `mascot`          | map  | see below                      | The animated Claude mascot face drawn to the left of the bullet/text. |
-| `callbacks`       | map  | `on_left: toggle_label`        | `on_left` / `on_middle` / `on_right`. |
+| `sessions`        | map  | see below                      | The Sessions popup listing every concurrently-open session. |
+| `callbacks`       | map  | `on_left: toggle_label`, `on_right: show_sessions` | `on_left` / `on_middle` / `on_right`. |
 
 The `{icon}` span carries a CSS class equal to the current phase
 (`idle`/`thinking`/`tool`/`permission`), so you can colour it per state — see the
@@ -69,6 +74,27 @@ decodes/advances frames while running, so it's free in the background.
 | `size`                  | int  | `16`        | Diameter in pixels the GIF is scaled to. |
 | `permission_dot_color`  | str  | `#F2B82E`   | Dot colour shown over the dimmed face while waiting on you. |
 | `gap`                   | int  | `6`         | Space (px) between the mascot and the bullet + text that follows it. |
+
+### `sessions` — the Sessions popup
+
+Right-clicking the widget (`show_sessions`, the default `on_right` callback)
+opens a popup listing **every** concurrently-open Claude Code session, not
+just whichever one wrote `state.json` last — ported from the sessions
+popover in [juzser/claude-status-bar-macos](https://github.com/juzser/claude-status-bar-macos).
+Each row shows the session's project (basename of its `cwd`), current
+activity, and elapsed time, and updates live while the popup is open.
+
+The hooks additionally maintain one JSON record per session under
+`sessions.d/<id>` (a sibling of `state.json`), containing `sessionId`,
+`state`, `label`, `cwd`, `startedAt`, `busySince`, and `updatedAt`. This is
+purely additive — `state.json` and the bar's own label are unaffected.
+
+| Option        | Type | Default    | Description |
+|---------------|------|------------|--------------|
+| `enabled`     | bool | `true`     | Enable the popup and per-session tracking. |
+| `stale_after` | int  | `900`      | Seconds after which an untouched session is hidden from the popup (likely crashed without firing Stop/End). |
+| `prune_after` | int  | `604800` (7 days) | Seconds after which an untouched session's record file is deleted outright. |
+| `menu`        | map  | —          | Popup appearance: `blur`, `round_corners`, `round_corners_type`, `border_color`, `alignment`, `direction`, `offset_top`, `offset_left` — same shape as `clipboard_history`'s `menu`. |
 
 ## Example configuration
 
