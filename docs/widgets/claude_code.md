@@ -45,11 +45,29 @@ See [Setup](#setup) for wiring the hooks.
 | `stale_after`     | int  | `0` (off)                      | Seconds after which a stuck "working" state is treated as idle. |
 | `tooltip`         | bool | `true`                         | Show a tooltip with status + elapsed. |
 | `icons`           | map  | `● ● ● ●`                       | Per-phase glyph: `idle`, `thinking`, `tool`, `permission`. |
+| `sparkle`         | map  | see below                      | The animated Claude "spark" mark drawn to the left of the bullet/text. |
 | `callbacks`       | map  | `on_left: toggle_label`        | `on_left` / `on_middle` / `on_right`. |
 
 The `{icon}` span carries a CSS class equal to the current phase
 (`idle`/`thinking`/`tool`/`permission`), so you can colour it per state — see the
 stylesheet example below.
+
+### `sparkle` — the animated spark mark
+
+A small four-point Claude "spark", drawn at runtime (no image assets) and
+placed to the left of the bullet + status text — it's purely additive; the
+bullet glyph and text are unaffected. It rotates and pulses while thinking or
+running a tool, sits static at rest, and shows dimmed with a yellow dot while
+waiting on a permission prompt. Matches the sibling macOS/tray-app icon
+(12 frames, 110ms/frame); unlike that app, the animation timer only runs
+while actually animating, so it's free in the background.
+
+| Option                 | Type | Default     | Description |
+|-------------------------|------|-------------|--------------|
+| `enabled`               | bool | `true`      | Show the spark. |
+| `size`                  | int  | `14`        | Diameter in pixels. |
+| `color`                 | str  | `#CC785C`   | Spark colour (Claude coral). |
+| `permission_dot_color`  | str  | `#F2B82E`   | Dot colour shown over the dimmed spark while waiting on you. |
 
 ## Example configuration
 

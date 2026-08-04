@@ -14,12 +14,15 @@ consumes the exact same state-file contract.
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import time
 from typing import Any
 
-from PyQt6.QtCore import QFileSystemWatcher, QTimer
+from PyQt6.QtCore import QFileSystemWatcher, QPointF, Qt, QTimer
+from PyQt6.QtGui import QBrush, QColor, QPainter, QPainterPath
+from PyQt6.QtWidgets import QWidget
 
 from core.utils.tooltip import set_tooltip
 from core.utils.utilities import refresh_widget_style
@@ -99,6 +102,116 @@ def _as_int(value: Any) -> int:
         return 0
 
 
+_SPARKLE_ANIM_FRAMES = 12
+_SPARKLE_ANIM_MS = 110  # matches the sibling claude-status-bar tray app's cadence
+
+
+def _closed_catmull_rom_path(points: list[tuple[float, float]]) -> QPainterPath:
+    """Smooth closed spline through `points` (Catmull-Rom -> cubic Bezier),
+    giving the sparkle's four points their gentle concave sides."""
+    n = len(points)
+    path = QPainterPath()
+    path.moveTo(*points[0])
+    tension = 1.0 / 6.0
+    for i in range(n):
+        p0 = points[(i - 1) % n]
+        p1 = points[i]
+        p2 = points[(i + 1) % n]
+        p3 = points[(i + 2) % n]
+        c1 = (p1[0] + (p2[0] - p0[0]) * tension, p1[1] + (p2[1] - p0[1]) * tension)
+        c2 = (p2[0] - (p3[0] - p1[0]) * tension, p2[1] - (p3[1] - p1[1]) * tension)
+        path.cubicTo(c1[0], c1[1], c2[0], c2[1], p2[0], p2[1])
+    path.closeSubpath()
+    return path
+
+
+class SparkleIcon(QWidget):
+    """Animated four-point Claude "spark" mark, drawn at runtime with
+    QPainter (no image assets) -- the same shape and motion as the sibling
+    claude-status-bar tray app's icon: rotates 0-90deg and pulses in scale
+    over a 12-frame/110ms loop while thinking or running a tool; a single
+    static frame at rest; dimmed with a permission dot while waiting on you.
+
+    Unlike that tray icon's timer (which runs continuously for the app's
+    lifetime), this one only runs while actually animating -- stopped the
+    instant the phase goes idle/permission -- so it costs nothing in the
+    background.
+    """
+
+    def __init__(self, size: int, color: str, dot_color: str, parent: QWidget | None = None):
+        super().__init__(parent)
+        self._size = size
+        self._color = QColor(color)
+        self._dot_color = QColor(dot_color)
+        self._phase = "idle"
+        self._frame = 0
+        self.setFixedSize(size, size)
+
+        self._timer = QTimer(self)
+        self._timer.setInterval(_SPARKLE_ANIM_MS)
+        self._timer.timeout.connect(self._tick)
+
+    def set_phase(self, phase: str) -> None:
+        animate = phase in ("thinking", "tool")
+        if phase != self._phase:
+            self._phase = phase
+            if not animate:
+                self._frame = 0
+        if animate and not self._timer.isActive():
+            self._timer.start()
+        elif not animate and self._timer.isActive():
+            self._timer.stop()
+        self.update()
+
+    def _tick(self) -> None:
+        self._frame = (self._frame + 1) % _SPARKLE_ANIM_FRAMES
+        self.update()
+
+    def paintEvent(self, _event) -> None:
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        if self._phase in ("thinking", "tool"):
+            t = self._frame / _SPARKLE_ANIM_FRAMES
+            angle = t * 90.0
+            pulse = 0.85 + 0.15 * math.sin(t * 2 * math.pi)
+        else:
+            angle = 0.0
+            pulse = 1.0
+
+        if self._phase == "permission":
+            self._draw_spark(painter, angle=0.0, scale=0.9, alpha=120)
+            d = self._size * 0.5
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QBrush(self._dot_color))
+            painter.drawEllipse(QPointF(self._size / 2, self._size / 2), d / 2, d / 2)
+        else:
+            self._draw_spark(painter, angle, pulse, alpha=255)
+
+        painter.end()
+
+    def _draw_spark(self, painter: QPainter, angle: float, scale: float, alpha: int) -> None:
+        outer = (self._size / 2 - 1.5) * scale
+        inner = outer * 0.32
+
+        points: list[tuple[float, float]] = []
+        for i in range(8):
+            a = (math.pi / 2) * (i // 2) + (math.pi / 4 if i % 2 == 1 else 0.0)
+            r = outer if i % 2 == 0 else inner
+            points.append((math.cos(a) * r, math.sin(a) * r))
+        path = _closed_catmull_rom_path(points)
+
+        painter.save()
+        painter.translate(self._size / 2, self._size / 2)
+        painter.rotate(angle)
+        fill_color = QColor(self._color)
+        fill_color.setAlpha(alpha)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QBrush(fill_color))
+        painter.drawPath(path)
+        painter.restore()
+
+
 class ClaudeCodeWidget(BaseWidget):
     validation_schema = ClaudeCodeConfig
 
@@ -110,6 +223,19 @@ class ClaudeCodeWidget(BaseWidget):
         self._data: dict[str, Any] = read_state(self._state_path)
 
         self._init_container()
+
+        # Added to the left of the bullet+text label (which is unaffected --
+        # this is purely additive), so it must be inserted before build_widget_label.
+        self._sparkle: SparkleIcon | None = None
+        if self.config.sparkle.enabled:
+            self._sparkle = SparkleIcon(
+                size=self.config.sparkle.size,
+                color=self.config.sparkle.color,
+                dot_color=self.config.sparkle.permission_dot_color,
+            )
+            self._sparkle.setProperty("class", "sparkle")
+            self._widget_container_layout.addWidget(self._sparkle)
+
         self.build_widget_label(self.config.label, self.config.label_alt)
 
         self.register_callback("toggle_label", self._toggle_label)
@@ -160,6 +286,9 @@ class ClaudeCodeWidget(BaseWidget):
             self._widget_frame.setVisible(False)
             return
         self._widget_frame.setVisible(True)
+
+        if self._sparkle is not None:
+            self._sparkle.set_phase(view["state"])
 
         active_widgets = self._widgets_alt if self._show_alt_label else self._widgets
         active_template = self.config.label_alt if self._show_alt_label else self.config.label
