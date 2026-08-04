@@ -27,18 +27,19 @@ class ClaudeCodeIconsConfig(CustomBaseModel):
     permission: str = "●"
 
 
-class ClaudeCodeSparkleConfig(CustomBaseModel):
-    """The animated four-point Claude "spark" mark shown to the left of the
-    bullet + status text (the bullet/text themselves are unaffected -- this
-    is an addition, not a replacement). Rotates and pulses while thinking or
-    running a tool; a single static frame at rest; dimmed with a permission
-    dot while waiting on you. Matches the sibling claude-status-bar tray app's
-    icon animation (12 frames, 110ms/frame).
+class ClaudeCodeMascotConfig(CustomBaseModel):
+    """The small pixel-art Claude mascot (rounded coral face, two block eyes,
+    a row of pale "teeth" along the bottom) shown to the left of the bullet +
+    status text (the bullet/text themselves are unaffected -- this is an
+    addition, not a replacement). Bobs gently while thinking or running a
+    tool; sits still at rest; dims with a permission dot while waiting on you.
     """
 
     enabled: bool = True
-    size: int = Field(default=14, ge=8, le=48)
-    color: str = "#CC785C"  # Claude coral
+    size: int = Field(default=16, ge=8, le=48)
+    color: str = "#E8825A"  # Claude coral
+    eye_color: str = "#1E1E1E"
+    mouth_color: str = "#FBEFE3"
     permission_dot_color: str = "#F2B82E"
 
 
@@ -61,6 +62,6 @@ class ClaudeCodeConfig(CustomBaseModel):
     stale_after: int = Field(default=0, ge=0)
     tooltip: bool = True
     icons: ClaudeCodeIconsConfig = ClaudeCodeIconsConfig()
-    sparkle: ClaudeCodeSparkleConfig = ClaudeCodeSparkleConfig()
+    mascot: ClaudeCodeMascotConfig = ClaudeCodeMascotConfig()
     callbacks: ClaudeCodeCallbacksConfig = ClaudeCodeCallbacksConfig()
     keybindings: list[KeybindingConfig] = []

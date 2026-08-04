@@ -20,7 +20,7 @@ import re
 import time
 from typing import Any
 
-from PyQt6.QtCore import QFileSystemWatcher, QPointF, Qt, QTimer
+from PyQt6.QtCore import QFileSystemWatcher, QPointF, QRectF, Qt, QTimer
 from PyQt6.QtGui import QBrush, QColor, QPainter, QPainterPath
 from PyQt6.QtWidgets import QWidget
 
@@ -102,53 +102,34 @@ def _as_int(value: Any) -> int:
         return 0
 
 
-_SPARKLE_ANIM_FRAMES = 12
-_SPARKLE_ANIM_MS = 110  # matches the sibling claude-status-bar tray app's cadence
+_MASCOT_BOB_MS = 50  # smooth continuous motion, not discrete frames
+_MASCOT_BOB_AMPLITUDE = 0.09  # fraction of icon size
 
 
-def _closed_catmull_rom_path(points: list[tuple[float, float]]) -> QPainterPath:
-    """Smooth closed spline through `points` (Catmull-Rom -> cubic Bezier),
-    giving the sparkle's four points their gentle concave sides."""
-    n = len(points)
-    path = QPainterPath()
-    path.moveTo(*points[0])
-    tension = 1.0 / 6.0
-    for i in range(n):
-        p0 = points[(i - 1) % n]
-        p1 = points[i]
-        p2 = points[(i + 1) % n]
-        p3 = points[(i + 2) % n]
-        c1 = (p1[0] + (p2[0] - p0[0]) * tension, p1[1] + (p2[1] - p0[1]) * tension)
-        c2 = (p2[0] - (p3[0] - p1[0]) * tension, p2[1] - (p3[1] - p1[1]) * tension)
-        path.cubicTo(c1[0], c1[1], c2[0], c2[1], p2[0], p2[1])
-    path.closeSubpath()
-    return path
+class ClaudeMascotIcon(QWidget):
+    """Small pixel-art Claude mascot (rounded coral face, two block eyes, a
+    row of pale "teeth" along the bottom edge), drawn at runtime with
+    QPainter -- no image assets. Bobs gently while thinking or running a
+    tool; sits still at rest; dims with a permission dot while waiting on
+    you.
 
-
-class SparkleIcon(QWidget):
-    """Animated four-point Claude "spark" mark, drawn at runtime with
-    QPainter (no image assets) -- the same shape and motion as the sibling
-    claude-status-bar tray app's icon: rotates 0-90deg and pulses in scale
-    over a 12-frame/110ms loop while thinking or running a tool; a single
-    static frame at rest; dimmed with a permission dot while waiting on you.
-
-    Unlike that tray icon's timer (which runs continuously for the app's
-    lifetime), this one only runs while actually animating -- stopped the
-    instant the phase goes idle/permission -- so it costs nothing in the
-    background.
+    The bob timer only runs while actually animating -- stopped the instant
+    the phase goes idle/permission -- so it costs nothing in the background.
     """
 
-    def __init__(self, size: int, color: str, dot_color: str, parent: QWidget | None = None):
+    def __init__(self, size: int, color: str, eye_color: str, mouth_color: str, dot_color: str, parent: QWidget | None = None):
         super().__init__(parent)
         self._size = size
         self._color = QColor(color)
+        self._eye_color = QColor(eye_color)
+        self._mouth_color = QColor(mouth_color)
         self._dot_color = QColor(dot_color)
         self._phase = "idle"
-        self._frame = 0
+        self._t = 0.0
         self.setFixedSize(size, size)
 
         self._timer = QTimer(self)
-        self._timer.setInterval(_SPARKLE_ANIM_MS)
+        self._timer.setInterval(_MASCOT_BOB_MS)
         self._timer.timeout.connect(self._tick)
 
     def set_phase(self, phase: str) -> None:
@@ -156,7 +137,7 @@ class SparkleIcon(QWidget):
         if phase != self._phase:
             self._phase = phase
             if not animate:
-                self._frame = 0
+                self._t = 0.0
         if animate and not self._timer.isActive():
             self._timer.start()
         elif not animate and self._timer.isActive():
@@ -164,52 +145,68 @@ class SparkleIcon(QWidget):
         self.update()
 
     def _tick(self) -> None:
-        self._frame = (self._frame + 1) % _SPARKLE_ANIM_FRAMES
+        self._t += _MASCOT_BOB_MS / 1000.0
         self.update()
 
     def paintEvent(self, _event) -> None:
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
+        bob = 0.0
         if self._phase in ("thinking", "tool"):
-            t = self._frame / _SPARKLE_ANIM_FRAMES
-            angle = t * 90.0
-            pulse = 0.85 + 0.15 * math.sin(t * 2 * math.pi)
-        else:
-            angle = 0.0
-            pulse = 1.0
+            bob = math.sin(self._t * 2 * math.pi * 1.4) * (self._size * _MASCOT_BOB_AMPLITUDE)
+
+        painter.save()
+        painter.translate(0, bob)
+        alpha = 140 if self._phase == "permission" else 255
+        self._draw_face(painter, alpha)
+        painter.restore()
 
         if self._phase == "permission":
-            self._draw_spark(painter, angle=0.0, scale=0.9, alpha=120)
-            d = self._size * 0.5
+            d = self._size * 0.34
             painter.setPen(Qt.PenStyle.NoPen)
             painter.setBrush(QBrush(self._dot_color))
-            painter.drawEllipse(QPointF(self._size / 2, self._size / 2), d / 2, d / 2)
-        else:
-            self._draw_spark(painter, angle, pulse, alpha=255)
+            painter.drawEllipse(QPointF(self._size * 0.78, self._size * 0.22), d / 2, d / 2)
 
         painter.end()
 
-    def _draw_spark(self, painter: QPainter, angle: float, scale: float, alpha: int) -> None:
-        outer = (self._size / 2 - 1.5) * scale
-        inner = outer * 0.32
+    def _draw_face(self, painter: QPainter, alpha: int) -> None:
+        size = self._size
+        grid = size / 12.0
 
-        points: list[tuple[float, float]] = []
-        for i in range(8):
-            a = (math.pi / 2) * (i // 2) + (math.pi / 4 if i % 2 == 1 else 0.0)
-            r = outer if i % 2 == 0 else inner
-            points.append((math.cos(a) * r, math.sin(a) * r))
-        path = _closed_catmull_rom_path(points)
+        # Rounded coral body -- rounded top corners, square bottom corners
+        # (the pixel-art teeth read as sitting flush on a flat base).
+        radius = size * 0.22
+        path = QPainterPath()
+        path.moveTo(0, size)
+        path.lineTo(0, radius)
+        path.arcTo(QRectF(0, 0, radius * 2, radius * 2), 180, -90)
+        path.lineTo(size - radius, 0)
+        path.arcTo(QRectF(size - radius * 2, 0, radius * 2, radius * 2), 90, -90)
+        path.lineTo(size, size)
+        path.closeSubpath()
 
-        painter.save()
-        painter.translate(self._size / 2, self._size / 2)
-        painter.rotate(angle)
-        fill_color = QColor(self._color)
-        fill_color.setAlpha(alpha)
+        body_color = QColor(self._color)
+        body_color.setAlpha(alpha)
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QBrush(fill_color))
+        painter.setBrush(QBrush(body_color))
         painter.drawPath(path)
-        painter.restore()
+
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, False)
+
+        eye_color = QColor(self._eye_color)
+        eye_color.setAlpha(alpha)
+        painter.setBrush(QBrush(eye_color))
+        for col in (3, 7):
+            painter.drawRect(QRectF(col * grid, 4 * grid, 2 * grid, 2 * grid))
+
+        mouth_color = QColor(self._mouth_color)
+        mouth_color.setAlpha(alpha)
+        painter.setBrush(QBrush(mouth_color))
+        for col in (1, 4, 7, 10):
+            painter.drawRect(QRectF(col * grid, 10 * grid, grid, 2 * grid))
+
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
 
 class ClaudeCodeWidget(BaseWidget):
@@ -226,15 +223,17 @@ class ClaudeCodeWidget(BaseWidget):
 
         # Added to the left of the bullet+text label (which is unaffected --
         # this is purely additive), so it must be inserted before build_widget_label.
-        self._sparkle: SparkleIcon | None = None
-        if self.config.sparkle.enabled:
-            self._sparkle = SparkleIcon(
-                size=self.config.sparkle.size,
-                color=self.config.sparkle.color,
-                dot_color=self.config.sparkle.permission_dot_color,
+        self._mascot: ClaudeMascotIcon | None = None
+        if self.config.mascot.enabled:
+            self._mascot = ClaudeMascotIcon(
+                size=self.config.mascot.size,
+                color=self.config.mascot.color,
+                eye_color=self.config.mascot.eye_color,
+                mouth_color=self.config.mascot.mouth_color,
+                dot_color=self.config.mascot.permission_dot_color,
             )
-            self._sparkle.setProperty("class", "sparkle")
-            self._widget_container_layout.addWidget(self._sparkle)
+            self._mascot.setProperty("class", "mascot")
+            self._widget_container_layout.addWidget(self._mascot)
 
         self.build_widget_label(self.config.label, self.config.label_alt)
 
@@ -287,8 +286,8 @@ class ClaudeCodeWidget(BaseWidget):
             return
         self._widget_frame.setVisible(True)
 
-        if self._sparkle is not None:
-            self._sparkle.set_phase(view["state"])
+        if self._mascot is not None:
+            self._mascot.set_phase(view["state"])
 
         active_widgets = self._widgets_alt if self._show_alt_label else self._widgets
         active_template = self.config.label_alt if self._show_alt_label else self.config.label
