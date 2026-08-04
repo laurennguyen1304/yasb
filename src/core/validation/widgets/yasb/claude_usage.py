@@ -28,8 +28,13 @@ class ClaudeUsageMenuConfig(CustomBaseModel):
 class ClaudeUsageConfig(CustomBaseModel):
     label: str = "Claude {five_hour}%"
     label_alt: str = "Claude {seven_day}%"
-    update_interval: int = Field(default=60, ge=30, le=3600)
-    cache_ttl: int = Field(default=120, ge=0, le=3600)
+    # Aligned with cache_ttl by default: every tick does real work instead of
+    # half of them firing, checking the cache is still fresh, and no-op'ing
+    # (which is what update_interval < cache_ttl causes). 5 minutes is plenty
+    # fresh for a usage percentage and keeps network/timer wakeups low for
+    # battery.
+    update_interval: int = Field(default=300, ge=30, le=3600)
+    cache_ttl: int = Field(default=300, ge=0, le=3600)
     tooltip: bool = True
     callbacks: ClaudeUsageCallbacksConfig = ClaudeUsageCallbacksConfig()
     menu: ClaudeUsageMenuConfig = ClaudeUsageMenuConfig()
