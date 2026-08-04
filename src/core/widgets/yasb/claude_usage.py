@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import time
 from datetime import UTC, datetime
 from typing import Any
 
@@ -10,7 +11,7 @@ from core.utils.tooltip import set_tooltip
 from core.utils.utilities import PopupWidget, refresh_widget_style
 from core.validation.widgets.yasb.claude_usage import ClaudeUsageConfig
 from core.widgets.base import BaseWidget
-from core.widgets.services.claude_usage.claude_api import ClaudeUsageService
+from core.widgets.services.claude_usage.claude_api import STALE_WARN_AFTER_S, ClaudeUsageService
 
 
 class UsageBar(QFrame):
@@ -94,6 +95,20 @@ class ClaudeUsageWidget(BaseWidget):
     def _pct(value: Any) -> str:
         return "--" if value is None else str(value)
 
+    def _staleness_note(self) -> str:
+        """Human-readable age note when the displayed data is old enough that
+        it's likely wrong (e.g. a stuck "Reset in 0m" from a reset timestamp
+        that has already passed). Empty string when the data is fresh."""
+        fetched_at = self._data.get("fetched_at") or 0
+        age_s = time.time() - fetched_at
+        if fetched_at <= 0 or age_s < STALE_WARN_AFTER_S:
+            return ""
+        age_min = int(age_s // 60)
+        if age_min < 60:
+            return f" (data is {age_min}m old, last refresh failed)"
+        age_hr = age_min // 60
+        return f" (data is {age_hr}h old, last refresh failed)"
+
     @staticmethod
     def _pct_decimal(raw: Any, rounded: Any) -> str:
         """One-decimal percentage ('28.0') from the raw value, falling back to the rounded one."""
@@ -174,7 +189,8 @@ class ClaudeUsageWidget(BaseWidget):
             if self.config.tooltip:
                 set_tooltip(
                     current_widget,
-                    f"Claude usage - 5h: {values['five_hour']}% · 7d: {values['seven_day']}%",
+                    f"Claude usage - 5h: {values['five_hour']}% · 7d: {values['seven_day']}%"
+                    f"{self._staleness_note()}",
                 )
         refresh_widget_style(*active_widgets)
 
@@ -233,7 +249,7 @@ class ClaudeUsageWidget(BaseWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        header = QLabel("Claude Usage")
+        header = QLabel("Claude Usage" + self._staleness_note())
         header.setProperty("class", "header")
         layout.addWidget(header)
 

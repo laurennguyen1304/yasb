@@ -27,6 +27,14 @@ EMPTY_RECORD: dict[str, Any] = {
     "fetched_at": 0,
 }
 
+# If a fetch fails and we fall back to the on-disk cache, warn (rather than
+# silently reuse it forever) once the cache is old enough that the displayed
+# numbers -- and especially the reset countdown, which recomputes against the
+# real current time on every redraw -- are likely just wrong. A stuck "Reset
+# in 0m" is the visible symptom of exactly this: the reset timestamp in a
+# stale cache has already passed.
+STALE_WARN_AFTER_S = 15 * 60
+
 
 def _claude_config_dir() -> str:
     return os.environ.get("CLAUDE_CONFIG_DIR") or os.path.join(os.path.expanduser("~"), ".claude")
@@ -127,9 +135,19 @@ def fetch_usage(cache_path: str, cache_ttl: int) -> dict[str, Any]:
         _write_cache(cache_path, record)
         return record
     except Exception as e:
-        logger.debug("usage fetch failed: %s", e)
         if cache:
+            age_s = now - int(cache.get("fetched_at", 0))
+            if age_s >= STALE_WARN_AFTER_S:
+                logger.warning(
+                    "usage fetch failed (%s: %s); showing a cached result that is %d minutes old",
+                    type(e).__name__,
+                    e,
+                    age_s // 60,
+                )
+            else:
+                logger.debug("usage fetch failed: %s", e)
             return cache
+        logger.warning("usage fetch failed (%s: %s) and no cache is available", type(e).__name__, e)
         return dict(EMPTY_RECORD)
 
 

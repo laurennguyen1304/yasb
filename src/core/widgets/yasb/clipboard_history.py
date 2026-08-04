@@ -120,6 +120,9 @@ class ClipboardHistoryWidget(BaseWidget):
 
         refresh_widget_style(*active_widgets)
 
+    def _on_menu_destroyed(self, *_args) -> None:
+        self._menu = None
+
     def _toggle_menu(self) -> None:
         self._show_menu()
 
@@ -134,6 +137,13 @@ class ClipboardHistoryWidget(BaseWidget):
             self.config.menu.round_corners_type,
             self.config.menu.border_color,
         )
+        # PopupWidget.hide()/hide_animated() schedule the underlying C++ object
+        # for deletion (deleteLater()), and it can close itself through several
+        # paths we don't control directly (click outside, Escape, re-toggling).
+        # Null out our reference the instant it's actually destroyed so any
+        # later check (e.g. a clipboard change arriving after close) sees a
+        # clean None instead of crashing on a dangling wrapper.
+        self._menu.destroyed.connect(self._on_menu_destroyed)
         self._menu.setProperty("class", "clipboard-history-menu")
 
         main_layout = QVBoxLayout(self._menu)
@@ -265,13 +275,25 @@ class ClipboardHistoryWidget(BaseWidget):
     def _copy_and_close(self, entry_id: str) -> None:
         self._service.copy_entry(entry_id)
         if self._menu:
-            self._menu.hide()
+            try:
+                self._menu.hide()
+            except RuntimeError:
+                self._menu = None  # already gone; nothing to close
 
     def _delete_entry(self, entry_id: str) -> None:
         self._service.remove_entry(entry_id)
 
     def _refresh_menu_list(self) -> None:
-        if not self._menu or not self._menu.isVisible():
+        if not self._menu:
+            return
+        try:
+            if not self._menu.isVisible():
+                return
+        except RuntimeError:
+            # Underlying popup was already destroyed (e.g. closed by a path
+            # that hasn't fired the destroyed-signal cleanup yet); treat it
+            # the same as "no popup" rather than crashing the whole bar.
+            self._menu = None
             return
         scroll_areas = self._menu.findChildren(QScrollArea)
         if not scroll_areas:
@@ -360,7 +382,10 @@ class ClipboardEntryFrame(QFrame):
         # tear the popup (and this row) down mid-drag.
         menu = self._owner._menu
         if menu is not None:
-            menu.set_auto_close_enabled(False)
+            try:
+                menu.set_auto_close_enabled(False)
+            except RuntimeError:
+                menu = None  # already gone; nothing to guard or re-enable later
         try:
             drag.exec(Qt.DropAction.CopyAction)
         finally:
