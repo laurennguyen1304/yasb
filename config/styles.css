@@ -431,6 +431,16 @@ QToolTip {
     color: var(--text);
     padding: 12px 14px 6px 14px;
 }
+.claude-usage-menu .error {
+    font-size: 11px;
+    color: #f0546f;
+    padding: 0 14px 6px 14px;
+}
+.claude-usage-menu .status {
+    font-size: 10px;
+    color: var(--subtext0);
+    padding: 0 14px 8px 14px;
+}
 .claude-usage-menu .section {
     padding: 6px 14px 12px 14px;
 }
@@ -452,6 +462,26 @@ QToolTip {
 .claude-usage-menu .progress.high .fill   { background-color: #f0546f; }
 .claude-usage-menu .progress.medium .fill { background-color: #ffb01f; }
 .claude-usage-menu .progress.low .fill    { background-color: #2fe07a; }
+.claude-usage-menu .top-sessions {
+    padding: 8px 14px 12px 14px;
+    border-top: 1px solid #313244;
+}
+.claude-usage-menu .top-sessions .title {
+    font-size: 12px;
+    color: var(--subtext0);
+    padding-bottom: 6px;
+}
+.claude-usage-menu .session-row {
+    padding: 3px 0;
+}
+.claude-usage-menu .session-title {
+    font-size: 12px;
+    color: var(--text);
+}
+.claude-usage-menu .session-age {
+    font-size: 11px;
+    color: var(--subtext0);
+}
 .claude-usage-menu .footer {
     padding-top: 6px;
 }

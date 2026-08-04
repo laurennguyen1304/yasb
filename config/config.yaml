@@ -299,6 +299,7 @@ widgets:
       callbacks:
         on_left: "toggle_label"
         on_middle: "toggle_label"
+        on_right: "show_sessions"
   claude_usage:
     type: "yasb.claude_usage.ClaudeUsageWidget"
     options:
@@ -309,6 +310,7 @@ widgets:
       tooltip: true
       callbacks:
         on_left: "toggle_menu"
+        on_middle: "refresh"
         on_right: "toggle_label"
   clipboard_history:
     type: "yasb.clipboard_history.ClipboardHistoryWidget"
