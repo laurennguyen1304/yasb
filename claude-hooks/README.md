@@ -8,16 +8,31 @@ the widget loads but stays **idle**.
 ## What it does
 
 `lifecycle.js` is invoked by Claude Code with an event name, reads the hook
-payload from stdin, and maintains a tiny state machine in
-`~/.claude/statusbar/state.json`:
+payload from stdin, and maintains a tiny state machine in two places:
+
+- `~/.claude/statusbar/state.json` — the most-recently-active session (what
+  the bar label itself shows).
+- `~/.claude/statusbar/state.d/<sessionId>.json` — one file per **live**
+  session, same shape, removed on `SessionEnd`. Powers the widget's
+  session-list popup (right-click / `show_sessions`).
 
 ```json
 { "sessionId": "…", "state": "idle|thinking|tool|permission",
-  "label": "Edit", "startedAt": 1700000000, "ts": 1700000000 }
+  "label": "Edit", "cwd": "C:\\path\\to\\project", "project": "project",
+  "entrypoint": "cli", "termProgram": "vscode",
+  "startedAt": 1700000000, "ts": 1700000000 }
 ```
 
-The write is atomic (temp file + rename) with a retry/fallback so a reader
+`cwd`/`project` come from the hook payload's working directory and drive the
+widget's click-to-open action and `{project}` placeholder. `entrypoint`/
+`termProgram` come from Claude Code's own `CLAUDE_CODE_ENTRYPOINT`/
+`TERM_PROGRAM` env vars and show up as a badge per session in the list (e.g.
+distinguishing a `cli` session from `claude-desktop`).
+
+Both writes are atomic (temp file + rename) with a retry/fallback so a reader
 holding the file on Windows never leaves the bar showing a stale state.
+Per-session files older than 24h are swept on the next `SessionStart` (a
+crashed session's file that never got a `SessionEnd`).
 
 ## Requirements
 
@@ -69,7 +84,8 @@ will move through **thinking → tool name → idle** in real time.
 | `UserPromptSubmit`| prompt | thinking (starts the timer) |
 | `PreToolUse`      | pre    | tool (shows the tool name) |
 | `PostToolUse`     | post   | thinking |
-| `Notification`    | notify | permission (waiting on you) |
+| `Notification`    | notify | permission — only if the notification actually looks like a permission prompt (`notification_type: permission_prompt`, or the message mentions "permission"/"approve"/"allow"); other notifications (e.g. the idle "Claude is waiting for your input" nudge) are ignored |
+| *(desktop app)*   | permreq | permission — the Claude Code desktop app's own permission signal, not redundant with `notify` (CLI-only) |
 | `Stop`            | stop   | idle |
 | `SessionEnd`      | end    | idle |
 
