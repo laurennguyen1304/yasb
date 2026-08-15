@@ -3,7 +3,9 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import time
+import urllib.error
 import urllib.request
 from typing import Any, ClassVar
 
@@ -25,23 +27,30 @@ EMPTY_RECORD: dict[str, Any] = {
     "seven_raw": None,
     "seven_reset_iso": None,
     "fetched_at": 0,
+    "error": None,
 }
 
-# If a fetch fails and we fall back to the on-disk cache, warn (rather than
-# silently reuse it forever) once the cache is old enough that the displayed
-# numbers -- and especially the reset countdown, which recomputes against the
-# real current time on every redraw -- are likely just wrong. A stuck "Reset
-# in 0m" is the visible symptom of exactly this: the reset timestamp in a
-# stale cache has already passed.
-STALE_WARN_AFTER_S = 15 * 60
 
+def _claude_config_dir(override: str = "") -> str:
+    """Directory holding .credentials.json for one Claude Code login.
 
-def _claude_config_dir() -> str:
+    `override` (from the widget's `claude_config_dir` option) lets a second
+    widget instance point at a different profile -- e.g. a company account
+    logged in via `CLAUDE_CONFIG_DIR=... claude` -- without touching the
+    CLAUDE_CONFIG_DIR env var Claude Code itself uses. Falls back to that env
+    var, then the default ~/.claude, exactly like the CLI does.
+    """
+    if override:
+        return os.path.abspath(os.path.expanduser(os.path.expandvars(override)))
     return os.environ.get("CLAUDE_CONFIG_DIR") or os.path.join(os.path.expanduser("~"), ".claude")
 
 
-def _cache_path() -> str:
-    return str(app_data_path("claude_usage_cache.json"))
+def _cache_path(config_dir: str = "") -> str:
+    """Per-profile cache file, so two accounts never clobber each other's cache."""
+    if not config_dir:
+        return str(app_data_path("claude_usage_cache.json"))
+    slug = re.sub(r"[^A-Za-z0-9._-]", "_", config_dir.strip("\\/"))[-64:]
+    return str(app_data_path(f"claude_usage_cache_{slug}.json"))
 
 
 def _read_cache(path: str) -> dict[str, Any] | None:
@@ -82,31 +91,52 @@ def _window(payload: dict[str, Any], top_key: str, limit_groups: set[str]) -> tu
 
     Prefers the legacy top-level object (``five_hour`` / ``seven_day``) when it
     still carries a utilization, and otherwise falls back to the newer ``limits``
-    array. Either can be missing/null on a given account, so both are optional.
+    array. Either can be missing/null on a given account -- or present but empty,
+    e.g. a top-level object with utilization 0 and no resets_at while the real
+    number lives in ``limits`` -- so both are checked and neither sinks the fetch.
     """
     obj = payload.get(top_key)
-    if isinstance(obj, dict) and obj.get("utilization") is not None:
+    if isinstance(obj, dict) and obj.get("utilization") is not None and obj.get("resets_at"):
         return float(obj["utilization"]), obj.get("resets_at")
     limit = _pick_limit(payload.get("limits"), limit_groups)
     if limit is not None:
         return float(limit["percent"]), limit.get("resets_at")
+    if isinstance(obj, dict) and obj.get("utilization") is not None:
+        return float(obj["utilization"]), obj.get("resets_at")
     return None, None
 
 
-def fetch_usage(cache_path: str, cache_ttl: int) -> dict[str, Any]:
+def _error_record(cache: dict[str, Any] | None, kind: str, now: int) -> dict[str, Any]:
+    """Last-known-good values (if any) tagged with why the latest fetch failed.
+
+    Deliberately not persisted to disk: a transient failure shouldn't overwrite
+    the on-disk "last successful fetch" with an error state that would then
+    survive a restart.
+    """
+    record = dict(cache) if cache else dict(EMPTY_RECORD)
+    record["error"] = kind
+    record["checked_at"] = now
+    return record
+
+
+def fetch_usage(cache_path: str, cache_ttl: int, force: bool = False, config_dir: str = "") -> dict[str, Any]:
     """Return a usage record, hitting the network only when the cache is stale.
 
-    On any error (including HTTP 429 rate limiting) the last cached record is
-    returned so the widget keeps showing the most recent known values. The OAuth
-    token is read from Claude Code's credentials store and is never logged.
+    On error, the last cached record is returned (so the widget keeps showing
+    the most recent known values) tagged with an `error` ("auth" for an
+    expired/invalid OAuth token, "network" otherwise) so callers can tell a
+    live number from a stale one instead of silently trusting a wrong value
+    forever. `force=True` bypasses the cache_ttl check for a manual refresh.
+    The OAuth token is read from Claude Code's credentials store (`config_dir`,
+    or ~/.claude by default -- see `_claude_config_dir`) and is never logged.
     """
     cache = _read_cache(cache_path)
     now = int(time.time())
-    if cache and (now - int(cache.get("fetched_at", 0))) < cache_ttl:
+    if not force and cache and (now - int(cache.get("fetched_at", 0))) < cache_ttl:
         return cache
 
     try:
-        cred_path = os.path.join(_claude_config_dir(), ".credentials.json")
+        cred_path = os.path.join(_claude_config_dir(config_dir), ".credentials.json")
         with open(cred_path, encoding="utf-8") as f:
             token = json.load(f)["claudeAiOauth"]["accessToken"]
 
@@ -117,10 +147,6 @@ def fetch_usage(cache_path: str, cache_ttl: int) -> dict[str, Any]:
         with urllib.request.urlopen(request, timeout=10) as response:
             payload = json.loads(response.read().decode("utf-8"))
 
-        # The endpoint has two shapes: legacy top-level five_hour/seven_day objects,
-        # and a newer `limits` array (group "session" = 5h, "weekly" = 7d). Either
-        # window can be null on a given account, so resolve each independently and
-        # never let one missing field sink the whole fetch.
         five_raw, five_reset = _window(payload, "five_hour", {"session"})
         seven_raw, seven_reset = _window(payload, "seven_day", {"weekly", "weekly_scoped"})
         record = {
@@ -131,24 +157,17 @@ def fetch_usage(cache_path: str, cache_ttl: int) -> dict[str, Any]:
             "seven_raw": seven_raw,
             "seven_reset_iso": seven_reset,
             "fetched_at": now,
+            "error": None,
         }
         _write_cache(cache_path, record)
         return record
+    except urllib.error.HTTPError as e:
+        kind = "auth" if e.code in (401, 403) else "network"
+        logger.debug("usage fetch failed: HTTP %s", e.code)
+        return _error_record(cache, kind, now)
     except Exception as e:
-        if cache:
-            age_s = now - int(cache.get("fetched_at", 0))
-            if age_s >= STALE_WARN_AFTER_S:
-                logger.warning(
-                    "usage fetch failed (%s: %s); showing a cached result that is %d minutes old",
-                    type(e).__name__,
-                    e,
-                    age_s // 60,
-                )
-            else:
-                logger.debug("usage fetch failed: %s", e)
-            return cache
-        logger.warning("usage fetch failed (%s: %s) and no cache is available", type(e).__name__, e)
-        return dict(EMPTY_RECORD)
+        logger.debug("usage fetch failed: %s", e)
+        return _error_record(cache, "network", now)
 
 
 class _UsageWorker(QThread):
@@ -156,13 +175,19 @@ class _UsageWorker(QThread):
 
     data_ready = pyqtSignal(dict)
 
-    def __init__(self, cache_path: str, cache_ttl: int, parent: Any = None):
+    def __init__(
+        self, cache_path: str, cache_ttl: int, parent: Any = None, force: bool = False, config_dir: str = ""
+    ):
         super().__init__(parent)
         self._cache_path = cache_path
         self._cache_ttl = cache_ttl
+        self._force = force
+        self._config_dir = config_dir
 
     def run(self) -> None:
-        self.data_ready.emit(fetch_usage(self._cache_path, self._cache_ttl))
+        self.data_ready.emit(
+            fetch_usage(self._cache_path, self._cache_ttl, force=self._force, config_dir=self._config_dir)
+        )
 
 
 class ClaudeUsageService(QObject):
@@ -180,20 +205,23 @@ class ClaudeUsageService(QObject):
     _instances: ClassVar[dict[tuple, ClaudeUsageService]] = {}
 
     @classmethod
-    def get_instance(cls, update_interval_s: int, cache_ttl: int) -> ClaudeUsageService:
-        key = (int(update_interval_s), int(cache_ttl))
+    def get_instance(cls, update_interval_s: int, cache_ttl: int, config_dir: str = "") -> ClaudeUsageService:
+        key = (int(update_interval_s), int(cache_ttl), config_dir)
         inst = cls._instances.get(key)
         if inst is None:
-            inst = cls(update_interval_s=int(update_interval_s), cache_ttl=int(cache_ttl), _key=key)
+            inst = cls(
+                update_interval_s=int(update_interval_s), cache_ttl=int(cache_ttl), _key=key, config_dir=config_dir
+            )
             cls._instances[key] = inst
         inst._refcount += 1
         return inst
 
-    def __init__(self, update_interval_s: int, cache_ttl: int, _key: tuple):
+    def __init__(self, update_interval_s: int, cache_ttl: int, _key: tuple, config_dir: str = ""):
         super().__init__()
         self._key = _key
         self._refcount = 0
-        self._cache_path = _cache_path()
+        self._config_dir = config_dir
+        self._cache_path = _cache_path(config_dir)
         self._cache_ttl = cache_ttl
         self._worker: _UsageWorker | None = None
         self._data: dict[str, Any] = _read_cache(self._cache_path) or dict(EMPTY_RECORD)
@@ -222,9 +250,16 @@ class ClaudeUsageService(QObject):
             self.deleteLater()
 
     def _tick(self) -> None:
+        self._start_fetch(force=False)
+
+    def force_refresh(self) -> None:
+        """Bypass cache_ttl and re-check now (e.g. the user opened the menu)."""
+        self._start_fetch(force=True)
+
+    def _start_fetch(self, force: bool) -> None:
         if self._worker is not None:
             return  # a fetch is already in flight
-        worker = _UsageWorker(self._cache_path, self._cache_ttl, self)
+        worker = _UsageWorker(self._cache_path, self._cache_ttl, self, force=force, config_dir=self._config_dir)
         worker.data_ready.connect(self._on_data)
         worker.finished.connect(self._on_finished)
         self._worker = worker

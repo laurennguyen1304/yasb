@@ -11,7 +11,8 @@ from core.utils.tooltip import set_tooltip
 from core.utils.utilities import PopupWidget, refresh_widget_style
 from core.validation.widgets.yasb.claude_usage import ClaudeUsageConfig
 from core.widgets.base import BaseWidget
-from core.widgets.services.claude_usage.claude_api import STALE_WARN_AFTER_S, ClaudeUsageService
+from core.widgets.services.claude_usage.claude_api import ClaudeUsageService
+from core.widgets.services.claude_usage.top_sessions import top_active_sessions
 
 
 class UsageBar(QFrame):
@@ -47,9 +48,12 @@ class ClaudeUsageWidget(BaseWidget):
         self.config = config
         self._show_alt_label = False
         self._menu: PopupWidget | None = None
+        self._menu_layout: QVBoxLayout | None = None
         self._service_released = False
 
-        self._service = ClaudeUsageService.get_instance(self.config.update_interval, self.config.cache_ttl)
+        self._service = ClaudeUsageService.get_instance(
+            self.config.update_interval, self.config.cache_ttl, config_dir=self.config.claude_config_dir
+        )
         self._data: dict[str, Any] = self._service.latest()
 
         self._init_container()
@@ -57,6 +61,7 @@ class ClaudeUsageWidget(BaseWidget):
 
         self.register_callback("toggle_label", self._toggle_label)
         self.register_callback("toggle_menu", self._toggle_menu)
+        self.register_callback("refresh", self._refresh_now)
 
         self.callback_left = self.config.callbacks.on_left
         self.callback_middle = self.config.callbacks.on_middle
@@ -79,9 +84,29 @@ class ClaudeUsageWidget(BaseWidget):
         self._release_service()
         super().closeEvent(event)
 
+    def _on_menu_destroyed(self, *_args) -> None:
+        self._menu = None
+
     def _on_data(self, data: dict[str, Any]) -> None:
         self._data = data
         self._update_label()
+        try:
+            menu_visible = self._menu is not None and self._menu.isVisible()
+        except RuntimeError:
+            # Underlying PopupWidget was already deleted (e.g. the user clicked
+            # outside it) via a path that hasn't fired destroyed() yet.
+            self._menu = None
+            menu_visible = False
+        if menu_visible:
+            # Refresh the open popup's contents in place -- destroying and
+            # recreating the whole PopupWidget here (as an earlier version did)
+            # visibly flickers/re-animates every time fresh data lands, which on
+            # a 60s update_interval means the popup would appear to randomly
+            # reopen itself while you're looking at it.
+            self._populate_menu(self._menu_layout)
+
+    def _refresh_now(self) -> None:
+        self._service.force_refresh()
 
     def _format_values(self) -> dict[str, str]:
         return {
@@ -94,20 +119,6 @@ class ClaudeUsageWidget(BaseWidget):
     @staticmethod
     def _pct(value: Any) -> str:
         return "--" if value is None else str(value)
-
-    def _staleness_note(self) -> str:
-        """Human-readable age note when the displayed data is old enough that
-        it's likely wrong (e.g. a stuck "Reset in 0m" from a reset timestamp
-        that has already passed). Empty string when the data is fresh."""
-        fetched_at = self._data.get("fetched_at") or 0
-        age_s = time.time() - fetched_at
-        if fetched_at <= 0 or age_s < STALE_WARN_AFTER_S:
-            return ""
-        age_min = int(age_s // 60)
-        if age_min < 60:
-            return f" (data is {age_min}m old, last refresh failed)"
-        age_hr = age_min // 60
-        return f" (data is {age_hr}h old, last refresh failed)"
 
     @staticmethod
     def _pct_decimal(raw: Any, rounded: Any) -> str:
@@ -135,6 +146,42 @@ class ClaudeUsageWidget(BaseWidget):
             return f"{local:%a} {hour12}:{local.minute:02d} {ampm}"
         except Exception:
             return "--"
+
+    @staticmethod
+    def _fmt_age(fetched_at: Any) -> str:
+        """How long ago the last successful fetch was, e.g. 'Updated 2m ago'."""
+        try:
+            seconds = int(time.time()) - int(fetched_at)
+        except (TypeError, ValueError):
+            return "Never updated"
+        if fetched_at in (None, 0) or seconds < 0:
+            return "Never updated"
+        if seconds < 60:
+            return "Updated just now"
+        minutes = seconds // 60
+        if minutes < 60:
+            return f"Updated {minutes}m ago"
+        hours = minutes // 60
+        return f"Updated {hours}h {minutes % 60}m ago"
+
+    @staticmethod
+    def _fmt_session_age(last_activity_ms: Any) -> str:
+        """Relative time since a session's last activity, e.g. '18m ago'."""
+        try:
+            seconds = int(time.time() - float(last_activity_ms) / 1000)
+        except (TypeError, ValueError):
+            return ""
+        if seconds < 0:
+            seconds = 0
+        if seconds < 60:
+            return "just now"
+        minutes = seconds // 60
+        if minutes < 60:
+            return f"{minutes}m ago"
+        hours = minutes // 60
+        if hours < 24:
+            return f"{hours}h ago"
+        return f"{hours // 24}d ago"
 
     @staticmethod
     def _fmt_reset_at(iso: str | None) -> str:
@@ -187,14 +234,20 @@ class ClaudeUsageWidget(BaseWidget):
                 except Exception:
                     current_widget.setText(part.strip())
             if self.config.tooltip:
-                set_tooltip(
-                    current_widget,
-                    f"Claude usage - 5h: {values['five_hour']}% · 7d: {values['seven_day']}%"
-                    f"{self._staleness_note()}",
-                )
+                tip = f"Claude usage - 5h: {values['five_hour']}% · 7d: {values['seven_day']}%"
+                error = self._data.get("error")
+                if error == "auth":
+                    tip += "\nSign-in expired - run `claude` to re-authenticate. Showing last known values."
+                elif error == "network":
+                    tip += "\nCouldn't reach Anthropic - showing last known values."
+                tip += f"\n{self._fmt_age(self._data.get('fetched_at'))}"
+                set_tooltip(current_widget, tip)
         refresh_widget_style(*active_widgets)
 
     def _toggle_menu(self) -> None:
+        # Opening the menu always re-checks (bypassing cache_ttl) so a wrong/stale
+        # number never lingers just because the periodic tick hasn't landed yet.
+        self._service.force_refresh()
         self._build_menu()
 
     def _build_section(self, title: str, value: Any, raw: Any, reset_iso: str | None) -> QFrame:
@@ -235,23 +288,72 @@ class ClaudeUsageWidget(BaseWidget):
 
         return frame
 
-    def _build_menu(self) -> None:
-        self._menu = PopupWidget(
-            self,
-            self.config.menu.blur,
-            self.config.menu.round_corners,
-            self.config.menu.round_corners_type,
-            self.config.menu.border_color,
-        )
-        self._menu.setProperty("class", "claude-usage-menu")
+    def _build_top_sessions_section(self) -> QFrame | None:
+        sessions = top_active_sessions(limit=self.config.top_sessions_count)
+        if not sessions:
+            return None
 
-        layout = QVBoxLayout(self._menu)
+        frame = QFrame()
+        frame.setProperty("class", "top-sessions")
+        layout = QVBoxLayout(frame)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        header = QLabel("Claude Usage" + self._staleness_note())
+        title_label = QLabel("Active Sessions")
+        title_label.setProperty("class", "title")
+        layout.addWidget(title_label)
+
+        for session in sessions:
+            row = QFrame()
+            row.setProperty("class", "session-row")
+            row_layout = QHBoxLayout(row)
+            row_layout.setContentsMargins(0, 0, 0, 0)
+            row_layout.setSpacing(8)
+
+            name_label = QLabel(session["title"])
+            name_label.setProperty("class", "session-title")
+            row_layout.addWidget(name_label, 1)
+
+            age_label = QLabel(self._fmt_session_age(session["lastActivityAt"]))
+            age_label.setProperty("class", "session-age")
+            row_layout.addWidget(age_label)
+
+            layout.addWidget(row)
+
+        return frame
+
+    def _clear_layout(self, layout: QVBoxLayout) -> None:
+        while layout.count():
+            item = layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.setParent(None)
+                widget.deleteLater()
+
+    def _populate_menu(self, layout: QVBoxLayout) -> None:
+        """(Re)fill an already-open popup's layout with the current data --
+        no PopupWidget teardown, so refreshing while open doesn't flicker."""
+        self._clear_layout(layout)
+
+        header = QLabel("Claude Usage")
         header.setProperty("class", "header")
         layout.addWidget(header)
+
+        error = self._data.get("error")
+        if error:
+            message = (
+                "Sign-in expired - run `claude` to re-authenticate"
+                if error == "auth"
+                else "Couldn't reach Anthropic - showing last known values"
+            )
+            error_label = QLabel(message)
+            error_label.setProperty("class", "error")
+            error_label.setWordWrap(True)
+            layout.addWidget(error_label)
+
+        status_label = QLabel(self._fmt_age(self._data.get("fetched_at")))
+        status_label.setProperty("class", "status")
+        layout.addWidget(status_label)
 
         layout.addWidget(
             self._build_section(
@@ -264,7 +366,33 @@ class ClaudeUsageWidget(BaseWidget):
             )
         )
 
-        self._menu.adjustSize()
+        top_sessions = self._build_top_sessions_section()
+        if top_sessions is not None:
+            layout.addWidget(top_sessions)
+
+        if self._menu is not None:
+            self._menu.adjustSize()
+
+    def _build_menu(self) -> None:
+        self._menu = PopupWidget(
+            self,
+            self.config.menu.blur,
+            self.config.menu.round_corners,
+            self.config.menu.round_corners_type,
+            self.config.menu.border_color,
+        )
+        # See ClipboardHistoryWidget for why this null-out matters: hide()
+        # schedules deleteLater() and the popup can also close itself via a
+        # path we don't control (click outside, Escape, re-toggling).
+        self._menu.destroyed.connect(self._on_menu_destroyed)
+        self._menu.setProperty("class", "claude-usage-menu")
+
+        self._menu_layout = QVBoxLayout(self._menu)
+        self._menu_layout.setContentsMargins(0, 0, 0, 0)
+        self._menu_layout.setSpacing(0)
+
+        self._populate_menu(self._menu_layout)
+
         self._menu.setPosition(
             alignment=self.config.menu.alignment,
             direction=self.config.menu.direction,

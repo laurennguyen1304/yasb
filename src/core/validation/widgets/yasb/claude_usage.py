@@ -28,14 +28,17 @@ class ClaudeUsageMenuConfig(CustomBaseModel):
 class ClaudeUsageConfig(CustomBaseModel):
     label: str = "Claude {five_hour}%"
     label_alt: str = "Claude {seven_day}%"
-    # Aligned with cache_ttl by default: every tick does real work instead of
-    # half of them firing, checking the cache is still fresh, and no-op'ing
-    # (which is what update_interval < cache_ttl causes). 5 minutes is plenty
-    # fresh for a usage percentage and keeps network/timer wakeups low for
-    # battery.
-    update_interval: int = Field(default=300, ge=30, le=3600)
-    cache_ttl: int = Field(default=300, ge=0, le=3600)
+    update_interval: int = Field(default=60, ge=30, le=3600)
+    cache_ttl: int = Field(default=120, ge=0, le=3600)
+    # Which Claude Code login to read. Empty = CLAUDE_CONFIG_DIR env var, or
+    # ~/.claude. Point a second widget instance at a different profile
+    # directory (e.g. one you logged into via `CLAUDE_CONFIG_DIR=... claude`)
+    # to track a second account -- personal vs. company -- side by side.
+    claude_config_dir: str = ""
     tooltip: bool = True
+    # Most recently active local Claude Desktop / Cowork sessions, shown in the
+    # popup menu below the 5h/7d bars. 0 hides the section.
+    top_sessions_count: int = Field(default=3, ge=0, le=10)
     callbacks: ClaudeUsageCallbacksConfig = ClaudeUsageCallbacksConfig()
     menu: ClaudeUsageMenuConfig = ClaudeUsageMenuConfig()
     keybindings: list[KeybindingConfig] = []
