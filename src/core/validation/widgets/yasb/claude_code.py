@@ -12,16 +12,14 @@ from core.validation.widgets.base_model import (
 
 
 class ClaudeCodeCallbacksConfig(CallbacksConfig):
-    on_left: str = "toggle_label"
+    on_left: str = "open_project"
+    on_middle: str = "toggle_label"
     on_right: str = "show_sessions"
 
 
 class ClaudeCodeIconsConfig(CustomBaseModel):
-    """Glyph shown for each activity phase.
-
-    Defaults to a plain dot (U+25CF) which renders in any font; the CSS colours
-    it per state. Swap in Nerd Font glyphs to match the rest of your bar.
-    """
+    """Static glyph per phase (used for the `dot` icon style, and for the
+    idle/permission phases in `spinner` style). CSS colours it per state."""
 
     idle: str = "●"
     thinking: str = "●"
@@ -29,49 +27,17 @@ class ClaudeCodeIconsConfig(CustomBaseModel):
     permission: str = "●"
 
 
-class ClaudeCodeMascotConfig(CustomBaseModel):
-    """The Claude mascot GIF (assets/images/claude_mascot.gif -- a
-    squash-and-stretch bounce, 10 frames at 70ms each) shown to the left of
-    the bullet + status text (the bullet/text themselves are unaffected --
-    this is an addition, not a replacement). Plays while thinking or running
-    a tool; held on its resting frame otherwise; dims with a permission dot
-    while waiting on you.
-    """
+class ClaudeCodeMenuConfig(CustomBaseModel):
+    """Popup shown by the `show_sessions` callback, listing every live session."""
 
-    enabled: bool = True
-    size: int = Field(default=16, ge=8, le=48)
-    permission_dot_color: str = "#F2B82E"
-    # Gap between the mascot and the bullet+text that follows it. The
-    # container layout's own spacing is 0, so without this they touch.
-    gap: int = Field(default=6, ge=0, le=32)
-
-
-class ClaudeCodeSessionsMenuConfig(CustomBaseModel):
     blur: bool = True
     round_corners: bool = True
-    round_corners_type: Literal["normal", "small"] = "normal"
+    round_corners_type: str = "normal"
     border_color: str = "System"
     alignment: str = "right"
     direction: str = "down"
     offset_top: int = 6
     offset_left: int = 0
-
-
-class ClaudeCodeSessionsConfig(CustomBaseModel):
-    """Popup listing every concurrently-open Claude Code session, not just
-    whichever one wrote state.json last -- read from the per-session records
-    the hooks maintain under state_file's sibling sessions.d/ directory.
-    Mirrors the sessions popover in the sibling macOS app
-    (juzser/claude-status-bar-macos).
-    """
-
-    enabled: bool = True
-    # A session untouched longer than this is hidden from the popup (almost
-    # certainly a crashed process that never fired its Stop/End hook).
-    stale_after: int = Field(default=900, ge=0)
-    # A session untouched longer than this has its record file deleted outright.
-    prune_after: int = Field(default=7 * 24 * 3600, ge=0)
-    menu: ClaudeCodeSessionsMenuConfig = ClaudeCodeSessionsMenuConfig()
 
 
 class ClaudeCodeConfig(CustomBaseModel):
@@ -80,20 +46,32 @@ class ClaudeCodeConfig(CustomBaseModel):
     # Path to the state file written by the Claude Code hooks. Empty = the
     # default ~/.claude/statusbar/state.json. ~ and env vars are expanded.
     state_file: str = ""
-    # Timer tick (ms) used to advance the live elapsed timer. File changes are
-    # picked up instantly via a filesystem watcher regardless of this value.
-    update_interval: int = Field(default=1000, ge=200, le=60000)
+    # Icon presentation: "dot" shows a static coloured dot per state (see
+    # `icons`), swapped for the working.gif animation while thinking/running a
+    # tool; "image" renders the real Claude spark mark instead (tinted,
+    # animated while working); "spinner" animates text glyphs instead.
+    icon_style: Literal["dot", "image", "spinner"] = "dot"
+    # Tint colour applied to the "image" spark/logo (hex, e.g. "#D97756").
+    icon_tint: str = "#D97756"
+    # Rendered icon size in px, for icon_style="image" and the "dot" working.gif.
+    icon_size: int = Field(default=16, ge=8, le=64)
+    # Spinner animation speed in ms per frame.
+    frame_interval: int = Field(default=150, ge=60, le=1000)
+    # Rotate playful "thinking words" (Cooking…, Manifesting…) while thinking.
+    thinking_words: bool = True
     show_elapsed: bool = True
     hide_when_idle: bool = False
-    idle_text: str = "idle"
-    thinking_text: str = "thinking"
-    permission_text: str = "waiting"
-    # If > 0, a state older than this many seconds is treated as idle (guards
-    # against a crashed session leaving a stale "working" state on the bar).
+    idle_text: str = "Idle"
+    thinking_text: str = "Thinking…"
+    permission_text: str = "Awaiting permission"
+    # What a click does with the session's project directory (cwd).
+    click_action: Literal["explorer", "vscode", "terminal", "none"] = "explorer"
+    # Override or extend the built-in tool-name -> friendly-label map.
+    tool_labels: dict[str, str] = {}
+    # If > 0, a state older than this many seconds is treated as idle.
     stale_after: int = Field(default=0, ge=0)
     tooltip: bool = True
     icons: ClaudeCodeIconsConfig = ClaudeCodeIconsConfig()
-    mascot: ClaudeCodeMascotConfig = ClaudeCodeMascotConfig()
-    sessions: ClaudeCodeSessionsConfig = ClaudeCodeSessionsConfig()
     callbacks: ClaudeCodeCallbacksConfig = ClaudeCodeCallbacksConfig()
+    menu: ClaudeCodeMenuConfig = ClaudeCodeMenuConfig()
     keybindings: list[KeybindingConfig] = []
