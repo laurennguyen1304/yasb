@@ -5,6 +5,7 @@ import ctypes.wintypes
 import logging
 import platform
 import winreg
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import suppress
 from ctypes import GetLastError, byref, c_ulong, create_unicode_buffer
 
@@ -166,6 +167,53 @@ def get_process_info(hwnd: int) -> dict:
         CloseHandle(h_process)
 
 
+def _resolve_uwp_display_name_mta(package_full_name: str) -> str | None:
+    """Look up a UWP package's display name via WinRT PackageManager.
+
+    Must run on a dedicated MTA thread: called directly from the Qt
+    main/STA thread, PackageManager can intermittently throw a native RPC
+    fault (not a catchable Python exception) that crashes the whole process.
+    """
+    try:
+        package = PackageManager().find_package_by_user_security_id_package_full_name("", package_full_name)
+        if package:
+            try:
+                app_entries = package.get_app_list_entries()
+                if app_entries and len(app_entries) > 0:
+                    short_name = app_entries[0].display_info.display_name
+                    if short_name and short_name.strip():
+                        return short_name.strip()
+            except Exception:
+                pass
+            display_name = package.display_name
+            if display_name and display_name.strip():
+                return display_name.strip()
+    except Exception as e:
+        logging.debug("Direct UWP lookup failed for %s: %s", package_full_name, e)
+
+    # Fallback: iterate all packages if direct lookup failed
+    try:
+        package_manager = PackageManager()
+        for package in package_manager.find_packages_by_user_security_id(""):
+            if package.id.full_name == package_full_name:
+                try:
+                    app_entries = package.get_app_list_entries()
+                    if app_entries and len(app_entries) > 0:
+                        short_name = app_entries[0].display_info.display_name
+                        if short_name and short_name.strip():
+                            return short_name.strip()
+                except Exception:
+                    pass
+                display_name = package.display_name
+                if display_name and display_name.strip():
+                    return display_name.strip()
+                break
+    except Exception as e:
+        logging.debug("Fallback UWP lookup failed for %s: %s", package_full_name, e)
+
+    return None
+
+
 def get_app_name_from_pid(pid: int) -> str | None:
     """
     Get the actual application name - handles both UWP and Win32 apps properly.
@@ -192,50 +240,12 @@ def get_app_name_from_pid(pid: int) -> str | None:
                     package_full_name = buf.value
                     CloseHandle(h_process)
 
-                    # Direct lookup by full name is much faster than iterating all packages, so try that first
                     try:
-                        package = PackageManager().find_package_by_user_security_id_package_full_name(
-                            "", package_full_name
-                        )
-                        if package:
-                            try:
-                                app_entries = package.get_app_list_entries()
-                                if app_entries and len(app_entries) > 0:
-                                    short_name = app_entries[0].display_info.display_name
-                                    if short_name and short_name.strip():
-                                        return short_name.strip()
-                            except Exception:
-                                pass
-                            display_name = package.display_name
-                            if display_name and display_name.strip():
-                                return display_name.strip()
+                        with ThreadPoolExecutor(max_workers=1) as pool:
+                            return pool.submit(_resolve_uwp_display_name_mta, package_full_name).result(timeout=5)
                     except Exception as e:
-                        logging.debug("Direct UWP lookup failed for %s: %s", package_full_name, e)
-
-                    # Fallback: iterate all packages if direct lookup failed
-                    try:
-                        package_manager = PackageManager()
-
-                        for package in package_manager.find_packages_by_user_security_id(""):
-                            if package.id.full_name == package_full_name:
-                                try:
-                                    app_entries = package.get_app_list_entries()
-                                    if app_entries and len(app_entries) > 0:
-                                        short_name = app_entries[0].display_info.display_name
-                                        if short_name and short_name.strip():
-                                            return short_name.strip()
-                                except Exception:
-                                    pass
-
-                                display_name = package.display_name
-                                if display_name and display_name.strip():
-                                    return display_name.strip()
-                                break
-                    except Exception as e:
-                        logging.debug("Fallback UWP lookup failed for %s: %s", package_full_name, e)
-
-                    # If WinRT fails, we already closed the handle, so return None
-                    return None
+                        logging.debug("UWP lookup failed for %s: %s", package_full_name, e)
+                        return None
 
             # This is a Win32 app - get FileDescription from executable
             size = c_ulong(1024)
