@@ -20,6 +20,7 @@ from core.log import enable_debug_logging, init_logger
 from core.tray import SystemTrayManager
 from core.ui.views.welcome import run_setup_wizard
 from core.utils.controller import start_cli_server
+from core.utils.fonts import load_bundled_fonts
 from core.utils.system_colors import SystemColorsService
 from core.utils.update_service import get_update_service, start_update_checker
 from core.watcher import create_observer
@@ -93,6 +94,7 @@ def single_instance_lock(name: str = "yasb_reborn"):
 def main():
     """Main entry point"""
     app = YASBApplication(argv)
+    load_bundled_fonts()
 
     if is_first_run() and not run_setup_wizard():
         return

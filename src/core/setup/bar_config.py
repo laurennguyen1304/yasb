@@ -85,7 +85,7 @@ ROOT_STYLE: str = """\
     --yasb-accent: #4cc2ff;
     --yasb-accent-hover: #40ace2;
     --yasb-accent-fg: #000000;
-    --icons-font: "Segoe Fluent Icons";
+    --icons-font: "Segoe MDL2 Assets";
     --icons-font-fallback: "JetBrainsMono NFP", "JetBrainsMono Nerd Font Propo";
     --system-font: "Segoe UI Variable", "Segoe UI";
 }

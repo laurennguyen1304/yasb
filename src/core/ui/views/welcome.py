@@ -67,11 +67,11 @@ NERD_FONT_URL = "https://downloads.yasb.dev/fonts/JetBrainsMonoNerdFont/JetBrain
 NERD_FONT_FALLBACK_URL = "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/JetBrainsMono.zip"
 NERD_FONT_FAMILIES = ["JetBrainsMono NFP", "JetBrainsMono Nerd Font Propo"]
 SEGOE_FLUENT_URL = "https://aka.ms/SegoeFluentIcons"
-SEGOE_FLUENT_FAMILY = "Segoe Fluent Icons"
+SEGOE_FLUENT_FAMILY = "Segoe MDL2 Assets"
 
 REQUIRED_FONTS = [
     {"label": "JetBrains Mono Nerd Font", "check_families": NERD_FONT_FAMILIES},
-    {"label": "Segoe Fluent Icons", "check_families": [SEGOE_FLUENT_FAMILY]},
+    {"label": "Segoe MDL2 Assets", "check_families": [SEGOE_FLUENT_FAMILY]},
 ]
 
 RESULT_SKIP = 0
@@ -140,12 +140,12 @@ class FontInstallWorker(QThread):
                 if self._stop:
                     self.finished.emit(False, "Installation cancelled.", installed)
                     return
-                self.progress.emit("Downloading Segoe Fluent Icons...")
+                self.progress.emit("Downloading Segoe MDL2 Assets...")
                 segoe_paths = self._download_and_extract_zip(SEGOE_FLUENT_URL, fonts_dir)
                 if self._stop:
                     self.finished.emit(False, "Installation cancelled.", installed)
                     return
-                self.progress.emit("Installing Segoe Fluent Icons...")
+                self.progress.emit("Installing Segoe MDL2 Assets...")
                 self._install_fonts(segoe_paths)
                 installed.extend(segoe_paths)
 
@@ -751,7 +751,7 @@ class WelcomeWizard(ViewBase, QDialog):
         if self._font_state == _FontState.INSTALLING:
             return
         install_nerd = self._fonts_missing.get("JetBrains Mono Nerd Font", False)
-        install_segoe = self._fonts_missing.get("Segoe Fluent Icons", False)
+        install_segoe = self._fonts_missing.get("Segoe MDL2 Assets", False)
         if not install_nerd and not install_segoe:
             self._font_state = _FontState.DONE
             self._font_next.setEnabled(True)

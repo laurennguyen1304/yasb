@@ -501,7 +501,7 @@ CPU_WIDGET_STYLE: str = """\
 .cpu-popup .header .pin-btn {
     font-size: 14px;
     background: transparent;
-    font-family: 'Segoe Fluent Icons';
+    font-family: 'Segoe MDL2 Assets';
     border: none;
     padding: 6px;
     color: var(--yasb-fg-muted);
@@ -578,7 +578,7 @@ MEMORY_WIDGET_STYLE: str = """\
 .memory-popup .header .pin-btn {
     font-size: 14px;
     background: transparent;
-    font-family: 'Segoe Fluent Icons';
+    font-family: 'Segoe MDL2 Assets';
     border: none;
     padding: 6px;
     color: var(--yasb-fg-muted);
@@ -648,14 +648,14 @@ QUICK_LAUNCH_WIDGET_STYLE: str = """\
     color: #449bff;
 }
 .quick-launch-popup .search .search-icon {
-    font-family: 'Segoe Fluent Icons';
+    font-family: 'Segoe MDL2 Assets';
     font-size: 18px;
     color: var(--yasb-fg);
     padding-right: 8px;
     min-width: 18px;
 }
 .quick-launch-popup .search .search-submit-icon {
-    font-family: 'Segoe Fluent Icons';
+    font-family: 'Segoe MDL2 Assets';
     font-size: 18px;
     color: var(--yasb-fg);
     min-width: 18px;
@@ -907,7 +907,7 @@ WEATHER_WIDGET_STYLE: str = """\
 .open-meteo-card-today .label.sunrisesunset-icon {
     font-size: 16px;
     color: rgb(201, 204, 159);
-    font-family: 'Segoe Fluent Icons';
+    font-family: 'Segoe MDL2 Assets';
     font-weight: 600;
 }
 .open-meteo-card-day {
@@ -1218,7 +1218,7 @@ MEDIA_WIDGET_STYLE: str = """\
     color: #9498a8;
     padding: 0 4px;
     margin: 0;
-    font-family: 'Segoe Fluent Icons';
+    font-family: 'Segoe MDL2 Assets';
     font-weight: 400;
 }
 .media-widget .btn:hover {
@@ -1272,7 +1272,7 @@ MEDIA_WIDGET_STYLE: str = """\
     margin-top: 10px;
 }
 .media-menu .btn {
-    font-family: 'Segoe Fluent Icons';
+    font-family: 'Segoe MDL2 Assets';
     font-size: 14px;
     font-weight: 400;
     margin: 10px 2px 0px 2px;
@@ -1355,7 +1355,7 @@ MEDIA_WIDGET_STYLE: str = """\
 .media-menu .app-volume-container .unmute-button {
     font-size: 16px;
     color: #ffffff;
-    font-family: 'Segoe Fluent Icons';
+    font-family: 'Segoe MDL2 Assets';
     margin-top: 4px;
 }
 .media-menu .app-volume-container .unmute-button {

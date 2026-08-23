@@ -33,8 +33,8 @@ QToolTip {
     font-size: 12px;
     color: var(--text);
     font-weight: 500;
-    /* Text renders in Google Sans; Nerd Font glyphs (icons) fall back to JetBrainsMono NFP per-glyph */
-    font-family: "Google Sans", "JetBrainsMono NFP";
+    /* Text renders in Segoe UI; Nerd Font glyphs (icons) fall back to JetBrainsMono NFP per-glyph */
+    font-family: "Segoe UI", "JetBrainsMono NFP";
     margin: 0;
     padding: 0;
 }
@@ -538,12 +538,12 @@ QToolTip {
     padding-right: 12px;
 }
 
-/* Text field — Inter 18/500 #1f2430 (falls back to Google Sans) */
+/* Text field — Inter 18/500 #1f2430 (falls back to Segoe UI) */
 .quick-launch-popup .search-input {
     background-color: transparent;
     border: none;
     color: #1f2430;
-    font-family: "Inter", "Google Sans", "Segoe UI";
+    font-family: "Inter", "Segoe UI";
     font-size: 18px;
     font-weight: 500;
     selection-background-color: #cdd9f0;
@@ -566,7 +566,7 @@ QToolTip {
     padding: 3px 10px;
     margin-right: 10px;
     font-size: 13px;
-    font-family: "Inter", "Google Sans";
+    font-family: "Inter", "Segoe UI";
 }
 
 /* Frosted result panel — separate rounded card below the pill */
@@ -582,7 +582,7 @@ QToolTip {
     background-color: transparent;
     border: none;
     color: #1f2430;                       /* result title ink */
-    font-family: "Inter", "Google Sans", "Segoe UI";
+    font-family: "Inter", "Segoe UI";
     selection-background-color: rgba(107, 114, 128, 0.12);
     selection-color: #1f2430;
 }
@@ -594,14 +594,14 @@ QToolTip {
 }
 .quick-launch-popup .description {
     color: #9aa1af;                       /* result subtitle */
-    font-family: "Inter", "Google Sans";
+    font-family: "Inter", "Segoe UI";
 }
 .quick-launch-popup .separator {
     color: #c3c8d0;
 }
 .quick-launch-popup .results-empty-text {
     color: #9aa1af;
-    font-family: "Inter", "Google Sans";
+    font-family: "Inter", "Segoe UI";
     font-size: 14px;
 }
 /* ============================================================
