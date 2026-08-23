@@ -12,10 +12,12 @@
 
   Options:
       -NoConfig     Skip copying config/ to ~/.config/yasb (keep your own).
+      -NoShortcut   Skip creating Desktop/Start Menu shortcuts.
       -Run          Launch the bar when setup finishes.
 #>
 param(
     [switch]$NoConfig,
+    [switch]$NoShortcut,
     [switch]$Run
 )
 
@@ -66,9 +68,49 @@ if (-not $NoConfig) {
     }
 }
 
+function New-YasbShortcut {
+    param(
+        [string]$Path,
+        [string]$TargetPath,
+        [string]$Arguments,
+        [string]$WorkingDirectory,
+        [string]$IconPath
+    )
+    $shell = New-Object -ComObject WScript.Shell
+    $shortcut = $shell.CreateShortcut($Path)
+    $shortcut.TargetPath = $TargetPath
+    $shortcut.Arguments = $Arguments
+    $shortcut.WorkingDirectory = $WorkingDirectory
+    if ($IconPath -and (Test-Path $IconPath)) { $shortcut.IconLocation = $IconPath }
+    $shortcut.Save()
+}
+
+if (-not $NoShortcut) {
+    Write-Host "==> Creating shortcuts..." -ForegroundColor Cyan
+    $pythonwPath = Join-Path $root '.venv\Scripts\pythonw.exe'
+    $mainScript = Join-Path $root 'src\main.py'
+    $iconPath = Join-Path $root 'src\assets\images\app_icon.ico'
+    $mainArg = '"' + $mainScript + '"'
+
+    $desktopPath = Join-Path ([Environment]::GetFolderPath('Desktop')) 'YASB.lnk'
+    New-YasbShortcut -Path $desktopPath -TargetPath $pythonwPath -Arguments $mainArg -WorkingDirectory $root -IconPath $iconPath
+    Write-Host "    Desktop shortcut -> $desktopPath" -ForegroundColor DarkGray
+
+    $startMenuDir = Join-Path ([Environment]::GetFolderPath('StartMenu')) 'Programs'
+    New-Item -ItemType Directory -Force -Path $startMenuDir | Out-Null
+    $startMenuPath = Join-Path $startMenuDir 'YASB.lnk'
+    New-YasbShortcut -Path $startMenuPath -TargetPath $pythonwPath -Arguments $mainArg -WorkingDirectory $root -IconPath $iconPath
+    Write-Host "    Start Menu shortcut -> $startMenuPath" -ForegroundColor DarkGray
+}
+
 Write-Host ""
 Write-Host "Setup complete." -ForegroundColor Green
-Write-Host "Run the bar with:  .\.venv\Scripts\pythonw.exe src\main.py" -ForegroundColor Green
+if (-not $NoShortcut) {
+    Write-Host "Launch YASB from the Desktop or Start Menu shortcut, or run:" -ForegroundColor Green
+} else {
+    Write-Host "Run the bar with:" -ForegroundColor Green
+}
+Write-Host "  .\.venv\Scripts\pythonw.exe src\main.py" -ForegroundColor Green
 
 if ($Run) {
     Write-Host "==> Launching..." -ForegroundColor Cyan
