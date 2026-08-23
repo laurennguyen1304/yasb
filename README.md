@@ -57,6 +57,36 @@ or `-Run` to launch immediately.
   rows, and drag-to-move by the magnifier icon.
 - 🎨 **Bundled [`config/`](config)** — `config.yaml` + `styles.css` deployed by `setup.ps1`.
 
+### One-time setup for the Claude Code widgets
+
+`claude_usage` needs nothing extra — it reads the login you already have from
+`claude` (the CLI), so it just works.
+
+`claude_code` (the live idle/thinking/tool status) needs one more thing: a
+small hook that tells Claude Code to write its state out where the widget can
+read it. `setup.ps1` doesn't touch this for you, on purpose — it lives in
+*your* Claude Code settings file, not this repo, and blindly overwriting it
+could wipe out hooks you already have configured.
+
+The easiest way to do this safely, whether or not you're comfortable editing
+JSON by hand: open a terminal **in this repo's folder** (the one you just
+cloned), run `claude` to start Claude Code there, and paste this:
+
+> Read `claude-hooks/README.md` in this repo and set up the `claude_code`
+> hooks for me. Use this repo's own absolute path (where you're running right
+> now) for the hook commands — don't ask me to type a path. Before writing
+> anything, check whether I already have a `~/.claude/settings.json` with
+> other hooks in it, back it up first, and merge in rather than overwrite.
+> Confirm Node.js is on my PATH before you finish, and tell me clearly what
+> you changed.
+
+Claude Code will read the hook contract itself, find the right path, and
+handle the JSON merge for you — safer than a fixed install script, since it
+can actually look at what's already in your settings file instead of
+assuming it's empty. It only touches files on your own machine; nothing about
+your setup gets sent anywhere else. Then start (or restart) a Claude Code
+session and the bar should move through its states live.
+
 ### Python 3.12 details
 
 Upstream YASB targets **Python 3.14**. This fork backports it to **3.12**: annotations,
